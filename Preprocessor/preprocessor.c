@@ -1,6 +1,7 @@
 #include "preprocessor.h"
 #include "../DataStructures/linkedList.h"
 #include "../DataStructures/trie.h"
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -137,6 +138,14 @@ char *preprocessor(char *inputFileName) {
         free(currentMacro->name);
         break;
       }
+
+      line += macroNameLength + 1;
+      if (lineEndsLegally(line) == NO) {
+        fprintf(outputFile, "%s", temp);
+        currentMacro->error = YES;
+        free(currentMacro->name);
+        break;
+      }
       inMacro = YES;
 
       insert_trie(macroNames, currentMacro->name, currentMacro->name);
@@ -230,4 +239,15 @@ int findWordLength(char *line) {
     currentChar++;
   }
   return length;
+}
+
+int lineEndsLegally(char *line) {
+  int i = 0;
+  while (line[i] != '\0' && line[i] != '\n') {
+    if (!isspace(*line)) {
+      return NO;
+    }
+    i++;
+  }
+  return YES;
 }

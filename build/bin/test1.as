@@ -1,7 +1,7 @@
 .define sz = 2
 MAIN: mov r3, LIST[sz]
 LOOP: jmp L1
-mcr m_mcr
+mcr m_mcr ghfsdkjlh
 cmp r3, #sz
 bne END
 endmcr

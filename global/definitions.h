@@ -9,7 +9,10 @@
 #define MACRO_START_LENGTH 4
 #define LINE_INCEREMENTS 10
 #define INITIAL_TABLE_SIZE 100
-
+#define MAX_ERROR_LENGTH 300
+#define MAX_LABEL_LENGTH 10
+#define MAX_DATA_SIZE 4294967295
+#define MAX_NUM_OF_OPERANDS 2
 
 /* ENUMS */
 enum BOOL {
@@ -115,4 +118,71 @@ HashTable* create_table();
 
 
 
+
+
+
+
+
+
+
+
+
+
+/* FRONDEND */
+
+typedef struct assembler_AST {
+
+  char error[MAX_ERROR_LENGTH];
+  char label_name[MAX_LABEL_LENGTH];
+  enum { instruction, directive } AST_opt;
+
+  union {
+    struct {
+      enum { dir_data, dir_string, dir_entry, dir_extern } dir_Opt;
+
+      union {
+        char *entry_extern_label;
+        char *string;
+        struct {
+          int data[MAX_DATA_SIZE];
+          int data_count;
+        } data;
+      } directive_operand;
+    } directive;
+
+    struct {
+      enum {
+        mov,
+        cmp,
+        add,
+        sub,
+        Not,
+        clr,
+        lea,
+        inc,
+        dec,
+        jmp,
+        bne,
+        red,
+        prn,
+        jsr,
+        rts,
+        hlt,
+        err
+      } possible_command;
+      enum {
+        no_operands,
+        const_operand,
+        label_operand,
+        register_operand
+      } operand_options[MAX_NUM_OF_OPERANDS];
+      union {
+        int const_number;
+        int register_number;
+        char *label;
+      } operands[MAX_NUM_OF_OPERANDS];
+    } instruction;
+  } AST_type;
+
+} assembler_AST;
 #endif

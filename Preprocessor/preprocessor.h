@@ -10,9 +10,10 @@ char *preprocessor(char *);
 int checkLine(char *, TrieNode *);
 int checkLegalName(char *);
 void skipSpaces(char **);
-void constructor(const void *copy);
-void destructor(void *Macro);
-int findWordLength(char *line);
+void constructor(const void *);
+void destructor(void *);
+int findWordLength(char *);
 void printMacro(char *, FILE *, List *);
+int lineEndsLegally(char *);
 
 #endif
