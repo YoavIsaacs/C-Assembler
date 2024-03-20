@@ -10,9 +10,22 @@
 #define LINE_INCEREMENTS 10
 #define INITIAL_TABLE_SIZE 100
 #define MAX_ERROR_LENGTH 300
-#define MAX_LABEL_LENGTH 10
+#define MAX_LABEL_LENGTH 32
 #define MAX_DATA_SIZE 4294967295
 #define MAX_NUM_OF_OPERANDS 2
+#define TEMP_INPUT_LENGTH 2048
+
+
+/* SYNTAX ERRORS */
+
+#define LINE_TOO_LONG_ERROR "Error, input line is too long.\n"
+#define MEMORY_ALLOCATION_ERROR "Error, memory allocation failed.\n"
+
+
+
+
+
+
 
 /* ENUMS */
 enum BOOL {
