@@ -172,14 +172,28 @@ typedef struct assembler_AST {
       } possible_command;
       enum {
         no_operands,
-        const_operand,
-        label_operand,
-        register_operand
+        const_operand,    /* CONSTANT NUMBER */
+        label_operand,    /* VARIABLE */
+        register_operand, /* REGISTER */
+        indexed_operand   /* ARRAY */
       } operand_options[MAX_NUM_OF_OPERANDS];
       union {
         int const_number;
         int register_number;
         char *label;
+        struct {
+          union {
+            struct {
+              char *label;
+              int index;
+            }constant;
+            struct {
+              char *array;
+              char *label;
+              int index;
+            }labeled_index;
+          }possible_index;
+        }index;
       } operands[MAX_NUM_OF_OPERANDS];
     } instruction;
   } AST_type;
