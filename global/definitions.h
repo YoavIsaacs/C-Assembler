@@ -22,8 +22,8 @@
 #define MEMORY_ALLOCATION_ERROR "Error, memory allocation failed.\n"
 #define LABEL_TOO_LONG_ERROR "Error, label is too long.\n"
 #define UNKNOWN_COMMAND_ERROR "Error, unknown command.\n"
-
-
+#define ILLEGAL_LABEL_NAME_ERROR "Error, illegal lable name.\n"
+#define ILLEGAL_STRING_ERROR "Error, illegal string.\n"
 
 
 
