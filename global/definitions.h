@@ -11,9 +11,11 @@
 #define INITIAL_TABLE_SIZE 100
 #define MAX_ERROR_LENGTH 300
 #define MAX_LABEL_LENGTH 32
-#define MAX_DATA_SIZE 4294967295
+#define MAX_DATA_SIZE 1000
 #define MAX_NUM_OF_OPERANDS 2
 #define TEMP_INPUT_LENGTH 2048
+#define MAX_INT_SIZE 10
+#define BASE_TEN 10
 
 
 /* SYNTAX ERRORS */
@@ -24,8 +26,11 @@
 #define UNKNOWN_COMMAND_ERROR "Error, unknown command.\n"
 #define ILLEGAL_LABEL_NAME_ERROR "Error, illegal lable name.\n"
 #define ILLEGAL_STRING_ERROR "Error, illegal string.\n"
-
-
+#define INVALID_NUMBER_ERROR "Error, illegal number detected.\n"
+#define INVALID_END_OF_LINE_ERROR "Error, line cannot end with a comma.\n"
+#define DOUBLE_COMMA_ERROR "Error, consecutive commas.\n"
+#define MISSING_COMMA_ERROR "Error, missing comma between numbers.\n"
+#define NUMBER_TOO_LONG_ERROR "Error, number is too large.\n"
 
 /* ENUMS */
 enum BOOL {

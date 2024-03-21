@@ -144,32 +144,25 @@ assembler_AST *parse_label(assembler_AST *AST, char *line, char *called_word,
 
 assembler_AST *parse_data(assembler_AST *AST, char *line, char *current_word,
                           char *file_name){
+  int num_length;
+
+  if (check_nums(line, AST) == NO)
+    return AST;
   
-
-
-
-
-
-
-
-
-
+  AST->AST_type.directive.directive_operand.data.data_count = 0;
+  while (AST->AST_type.directive.directive_operand.data.data_count < MAX_DATA_SIZE && (*line) != '\0') {
+    num_length = findWordLength(line);
+    if (num_length > MAX_INT_SIZE || (*line == '-' && num_length > MAX_INT_SIZE + 1) || (*line == '+' && num_length > MAX_INT_SIZE + 1)) {
+      AST->has_error = YES;
+      strcpy(AST->error, NUMBER_TOO_LONG_ERROR);
+      return AST;
+    }
+    AST->AST_type.directive.directive_operand.data.data[AST->AST_type.directive.directive_operand.data.data_count++] = (int)strtol(line, &line, BASE_TEN);
+    skipSpaces(&line);
+  }
   strcpy(AST->label_name, current_word);
-  
-
-
-
-
-
-
-
-
-
-
-
-
-
 }
+
 assembler_AST *parse_string(assembler_AST *AST, char *line, char *current_word,
                           char *file_name){
 
@@ -210,4 +203,76 @@ assembler_AST *parse_entry_extern(assembler_AST *AST, char *line, char *current_
 
 
 
+}
+
+
+int check_nums(char *input, assembler_AST *AST) {
+  int is_decimal = NO, has_comma = NO, first_digit = NO;
+  while (input && *input != '\0') {
+    if (isspace(*input)) {
+      input++;
+      continue;
+    }
+    if (!isdigit(*input) && !isspace(*input) && *input != ',' &&
+        *input != '-' && *input != '+' && *input != '\0' && *input != '\n' &&
+        *input != '\005') {
+      AST->has_error = YES;
+      strcpy(AST->error, INVALID_NUMBER_ERROR);
+      return NO;
+    }
+    if (*input == ',' && (lineEndsLegally(input)) == YES) {
+      AST->has_error = YES;
+      strcpy(AST->error, INVALID_END_OF_LINE_ERROR);
+      return NO;
+    }
+    if (*input == ',' && has_comma == NO) {
+      has_comma = YES;
+    } else if (*input == ',' && has_comma == YES) {
+      AST->has_error = YES;
+      strcpy(AST->error, DOUBLE_COMMA_ERROR);
+      return NO;
+    }
+    if (*input == '\0' && first_digit == YES) {
+      AST->has_error = YES;
+      strcpy(AST->error, INVALID_NUMBER_ERROR);
+      return NO;
+    }
+    if (*input == '-' && first_digit == NO) {
+      AST->has_error = YES;
+      strcpy(AST->error, INVALID_NUMBER_ERROR);
+      return NO;
+    }
+    if (isdigit(*input && has_comma == NO && first_digit == NO)) {
+      AST->has_error = YES;
+      strcpy(AST->error, MISSING_COMMA_ERROR);
+      return NO;
+    }
+
+    if (*input == '+' && first_digit == YES) {
+      input++;
+    }
+
+    if (*input == ',') {
+      has_comma = YES;
+      first_digit = YES;
+      is_decimal = NO;
+    }
+    if (has_comma == YES && isdigit(*input)) {
+      has_comma = NO;
+    }
+
+    if (first_digit == NO && *input == '.') {
+      is_decimal = YES;
+    }
+    if (isdigit(*input) && first_digit == YES) {
+      first_digit = NO;
+    }
+    if (*input == '\0' && has_comma == YES) {
+      AST->has_error = YES;
+      strcpy(AST->error, INVALID_END_OF_LINE_ERROR);
+      return NO;
+    }
+    input++;
+  }
+  return YES;
 }

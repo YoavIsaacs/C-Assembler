@@ -16,5 +16,6 @@ assembler_AST* parse_label(assembler_AST *, char *, char *, char *);
 int check_two_operands(char *);
 int check_one_operand(char *);
 int check_no_operands(char *);
+int check_nums(char *, assembler_AST *);
 
 #endif
