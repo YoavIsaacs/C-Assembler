@@ -5,7 +5,7 @@
 #include "../Preprocessor/preprocessor.h"
 #include <stdio.h>
 
-assembler_AST* parse(FILE *, char *);
+assembler_AST* parse(char *, char *);
 assembler_AST* parse_two_operands(assembler_AST *, char *, char *, char *);
 assembler_AST* parse_one_operand(assembler_AST *, char *, char *, char *);
 assembler_AST* parse_no_operands(assembler_AST *, char *, char *, char *);
