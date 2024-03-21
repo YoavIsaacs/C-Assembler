@@ -20,8 +20,8 @@
 
 #define LINE_TOO_LONG_ERROR "Error, input line is too long.\n"
 #define MEMORY_ALLOCATION_ERROR "Error, memory allocation failed.\n"
-
-
+#define LABEL_TOO_LONG_ERROR "Error, label is too long.\n"
+#define UNKNOWN_COMMAND_ERROR "Error, unknown command.\n"
 
 
 
@@ -144,7 +144,7 @@ HashTable* create_table();
 /* FRONDEND */
 
 typedef struct assembler_AST {
-
+  int has_error;
   char error[MAX_ERROR_LENGTH];
   char label_name[MAX_LABEL_LENGTH];
   enum { instruction, directive } AST_opt;
@@ -180,8 +180,7 @@ typedef struct assembler_AST {
         prn,
         jsr,
         rts,
-        hlt,
-        err
+        hlt
       } possible_command;
       enum {
         no_operands,
