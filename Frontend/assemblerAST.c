@@ -1,5 +1,6 @@
 #include "assemblerAST.h"
 #include "../global/definitions.h"
+#include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -96,6 +97,11 @@ assembler_AST *parse_label(assembler_AST *AST, char *line, char *called_word,
   char *current_word;
   int word_length;
 
+  if (!isalpha(*called_word)) {
+    AST->has_error = YES;
+    strcpy(AST->error, ILLEGAL_LABEL_NAME_ERROR);
+    return AST;
+  }
   word_length = strlen(called_word);
   if (word_length > MAX_LABEL_LENGTH) {
     AST->has_error = YES;
@@ -138,7 +144,17 @@ assembler_AST *parse_label(assembler_AST *AST, char *line, char *called_word,
 
 assembler_AST *parse_data(assembler_AST *AST, char *line, char *current_word,
                           char *file_name){
+  
 
+
+
+
+
+
+
+
+
+  strcpy(AST->label_name, current_word);
   
 
 
@@ -150,6 +166,47 @@ assembler_AST *parse_data(assembler_AST *AST, char *line, char *current_word,
 
 
 
+
+
+
+}
+assembler_AST *parse_string(assembler_AST *AST, char *line, char *current_word,
+                          char *file_name){
+
+  char temp[MAX_LINE_LENGTH];
+  char *string;
+  int word_length;
+
+  skipSpaces(&line);
+  word_length = findWordLength(line);
+  if (*line != '\"' && (*(line + word_length)) != '\"') {
+    AST->has_error = YES;
+    strcpy(AST->error, ILLEGAL_STRING_ERROR);
+    return AST;
+  }
+  AST->AST_type.directive.directive_operand.string = (char*)malloc(word_length + 1); 
+  if (AST->AST_type.directive.directive_operand.string == NULL) {
+    printf("%s", MEMORY_ALLOCATION_ERROR);
+    exit(1);
+  }
+  strncpy(AST->AST_type.directive.directive_operand.string, temp, word_length);
+  return AST;
+} 
+
+assembler_AST *parse_entry_extern(assembler_AST *AST, char *line, char *current_word,
+                          char *file_name){
+
+  char temp[MAX_LINE_LENGTH];
+  int word_length;
+
+  skipSpaces(&line);
+  if (!isalpha(*line)) {
+    AST->has_error = YES;
+    strcpy(AST->error, ILLEGAL_LABEL_NAME_ERROR);
+    return AST;
+  }
+  word_length = findWordLength(line);
+  
 
 
 
