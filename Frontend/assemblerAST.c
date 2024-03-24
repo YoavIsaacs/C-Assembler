@@ -1,278 +1,188 @@
 #include "assemblerAST.h"
 #include "../global/definitions.h"
 #include <ctype.h>
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 
-assembler_AST *parse(char *input, char *file_name) {
-  char *line;
-  char *current_word;
-  char temp[TEMP_INPUT_LENGTH];
-  int i;
-  int word_length;
-  int line_length;
-  assembler_AST *AST;
 
-  AST = (assembler_AST *)malloc(sizeof(assembler_AST));
-  if (AST == NULL) {
-    printf("%s", MEMORY_ALLOCATION_ERROR);
-    exit(1);
-  }
-  AST->has_error = NO;
-  line_length = strlen(temp);
-  if (line_length > MAX_LINE_LENGTH) {
-    AST->has_error = YES;
-    strcpy(AST->error, LINE_TOO_LONG_ERROR);
-    return AST;
-  }
-  line = (char *)malloc(sizeof(char) * strlen(temp) + 1);
-  if (line == NULL) {
-    printf("%s", MEMORY_ALLOCATION_ERROR);
-    exit(1);
-  }
-  strcpy(line, temp);
-  skipSpaces(&line);
-  word_length = findWordLength(line);
-  current_word = (char *)malloc((sizeof(char) * word_length) + 1);
-  if (current_word == NULL) {
-    printf("%s", MEMORY_ALLOCATION_ERROR);
-    exit(1);
-  }
-  strncpy(current_word, line, word_length);
-  line += word_length + 1;
+struct allowed_operands_for_instructions {
+  char *instruction_name;
+  int instruction_opcode;
+  char *allowed_source;
+  char *allowed_destination;
+};
 
-  if (check_two_operands(current_word) == YES)
-    return parse_two_operands(AST, line, current_word, file_name);
+struct allowed_operands_for_instructions
+    instuction_operand_table[NUMBER_OF_INSTRUCTIONS] = {
+        {"mov", AST_opcode_mov, "0123", "123"},
+        {"cmp", AST_opcode_cmp, "0123", "0123"},
+        {"add", AST_opcode_add, "0123", "123"},
+        {"sub", AST_opcode_sub, "0123", "123"},
+        {"not", AST_opcode_not, "", "123"},
+        {"clr", AST_opcode_clr, "", "123"},
+        {"lea", AST_opcode_lea, "12", "123"},
+        {"inc", AST_opcode_inc, "", "123"},
+        {"dec", AST_opcode_dec, "", "123"},
+        {"jmp", AST_opcode_jmp, "", "13"},
+        {"bne", AST_opcode_bne, "", "13"},
+        {"red", AST_opcode_red, "", "123"},
+        {"prn", AST_opcode_prn, "", "0123"},
+        {"jsr", AST_opcode_jsr, "", "13"},
+        {"rts", AST_opcode_rts, "", ""},
+        {"hlt", AST_opcode_hlt, "", ""},
+};
 
-  if (check_one_operand(current_word) == YES)
-    return parse_one_operand(AST, line, current_word, file_name);
+assembler_AST *create_assembler_AST(char *input) {}
 
-  if (check_no_operands(current_word) == YES)
-    return parse_no_operands(AST, line, current_word, file_name);
+int is_a_valid_number(char *input, int lower_bound, int upper_bound,
+                      int *result) {
+  int input_length;
+  int parsed_number;
 
-  if (strcmp(current_word, ".data"))
-    return parse_data(AST, line, current_word, file_name);
-
-  if (strcmp(current_word, ".string"))
-    return parse_string(AST, line, current_word, file_name);
-
-  if (strcmp(current_word, ".entry") || strcmp(current_word, ".extern"))
-    return parse_entry_extern(AST, line, current_word, file_name);
-
-  return parse_label(AST, line, current_word, file_name);
-  return AST;
-}
-
-int check_two_operands(char *word) {
-  if (strcmp(word, "mov") == 0 || strcmp(word, "cmp") == 0 ||
-      strcmp(word, "add") == 0 || strcmp(word, "sub") == 0 ||
-      strcmp(word, "lea") == 0)
-    return YES;
-
-  return NO;
-}
-
-int check_one_operand(char *word) {
-
-  if (strcmp(word, "not") == 0 || strcmp(word, "clr") == 0 ||
-      strcmp(word, "inc") == 0 || strcmp(word, "dec") == 0 ||
-      strcmp(word, "jmp") == 0 || strcmp(word, "bne") == 0 ||
-      strcmp(word, "red") == 0 || strcmp(word, "prn") == 0 ||
-      strcmp(word, "jsr") == 0)
-    return YES;
-
-  return NO;
-}
-
-int check_no_operands(char *word) {
-  if (strcmp(word, "rts") == 0 || strcmp(word, "hlt") == 0)
-    return YES;
-
-  return NO;
-}
-
-assembler_AST *parse_label(assembler_AST *AST, char *line, char *called_word,
-                           char *file_name) {
-  char temp[TEMP_INPUT_LENGTH];
-  char *current_word;
-  int word_length;
-
-  if (!isalpha(*called_word)) {
-    AST->has_error = YES;
-    strcpy(AST->error, ILLEGAL_LABEL_NAME_ERROR);
-    return AST;
-  }
-  word_length = strlen(called_word);
-  if (word_length > MAX_LABEL_LENGTH) {
-    AST->has_error = YES;
-    strcpy(AST->error, LABEL_TOO_LONG_ERROR);
-  }
-  strncpy(AST->label_name, called_word, word_length);
-  line += word_length + 1;
-  skipSpaces(&line);
-  word_length = findWordLength(line);
-  current_word = (char *)malloc((sizeof(char) * word_length) + 1);
-  if (current_word == NULL) {
-    printf("%s", MEMORY_ALLOCATION_ERROR);
-    exit(1);
-  }
-  strncpy(current_word, line, word_length);
-  line += word_length + 1;
-
-  if (check_two_operands(current_word) == YES)
-    return parse_two_operands(AST, line, current_word, file_name);
-
-  if (check_one_operand(current_word) == YES)
-    return parse_one_operand(AST, line, current_word, file_name);
-
-  if (check_no_operands(current_word) == YES)
-    return parse_no_operands(AST, line, current_word, file_name);
-
-  if (strcmp(current_word, ".data"))
-    return parse_data(AST, line, current_word, file_name);
-
-  if (strcmp(current_word, ".string"))
-    return parse_string(AST, line, current_word, file_name);
-
-  if (strcmp(current_word, ".entry") || strcmp(current_word, ".extern"))
-    return parse_entry_extern(AST, line, current_word, file_name);
-
-  AST->has_error = YES;
-  strcpy(AST->error, UNKNOWN_COMMAND_ERROR);
-  return AST;
-}
-
-assembler_AST *parse_data(assembler_AST *AST, char *line, char *current_word,
-                          char *file_name){
-  int num_length;
-
-  if (check_nums(line, AST) == NO)
-    return AST;
-  
-  AST->AST_type.directive.directive_operand.data.data_count = 0;
-  while (AST->AST_type.directive.directive_operand.data.data_count < MAX_DATA_SIZE && (*line) != '\0') {
-    num_length = findWordLength(line);
-    if (num_length > MAX_INT_SIZE || (*line == '-' && num_length > MAX_INT_SIZE + 1) || (*line == '+' && num_length > MAX_INT_SIZE + 1)) {
-      AST->has_error = YES;
-      strcpy(AST->error, NUMBER_TOO_LONG_ERROR);
-      return AST;
-    }
-    AST->AST_type.directive.directive_operand.data.data[AST->AST_type.directive.directive_operand.data.data_count++] = (int)strtol(line, &line, BASE_TEN);
-    skipSpaces(&line);
-  }
-  strcpy(AST->label_name, current_word);
-}
-
-assembler_AST *parse_string(assembler_AST *AST, char *line, char *current_word,
-                          char *file_name){
-
-  char temp[MAX_LINE_LENGTH];
-  char *string;
-  int word_length;
-
-  skipSpaces(&line);
-  word_length = findWordLength(line);
-  if (*line != '\"' && (*(line + word_length)) != '\"') {
-    AST->has_error = YES;
-    strcpy(AST->error, ILLEGAL_STRING_ERROR);
-    return AST;
-  }
-  AST->AST_type.directive.directive_operand.string = (char*)malloc(word_length + 1); 
-  if (AST->AST_type.directive.directive_operand.string == NULL) {
-    printf("%s", MEMORY_ALLOCATION_ERROR);
-    exit(1);
-  }
-  strncpy(AST->AST_type.directive.directive_operand.string, temp, word_length);
-  return AST;
-} 
-
-assembler_AST *parse_entry_extern(assembler_AST *AST, char *line, char *current_word,
-                          char *file_name){
-
-  char temp[MAX_LINE_LENGTH];
-  int word_length;
-
-  skipSpaces(&line);
-  if (!isalpha(*line)) {
-    AST->has_error = YES;
-    strcpy(AST->error, ILLEGAL_LABEL_NAME_ERROR);
-    return AST;
-  }
-  word_length = findWordLength(line);
-  
-
-
-
-}
-
-
-int check_nums(char *input, assembler_AST *AST) {
-  int is_decimal = NO, has_comma = NO, first_digit = NO;
-  while (input && *input != '\0') {
-    if (isspace(*input)) {
-      input++;
-      continue;
-    }
-    if (!isdigit(*input) && !isspace(*input) && *input != ',' &&
-        *input != '-' && *input != '+' && *input != '\0' && *input != '\n' &&
-        *input != '\005') {
-      AST->has_error = YES;
-      strcpy(AST->error, INVALID_NUMBER_ERROR);
-      return NO;
-    }
-    if (*input == ',' && (lineEndsLegally(input)) == YES) {
-      AST->has_error = YES;
-      strcpy(AST->error, INVALID_END_OF_LINE_ERROR);
-      return NO;
-    }
-    if (*input == ',' && has_comma == NO) {
-      has_comma = YES;
-    } else if (*input == ',' && has_comma == YES) {
-      AST->has_error = YES;
-      strcpy(AST->error, DOUBLE_COMMA_ERROR);
-      return NO;
-    }
-    if (*input == '\0' && first_digit == YES) {
-      AST->has_error = YES;
-      strcpy(AST->error, INVALID_NUMBER_ERROR);
-      return NO;
-    }
-    if (*input == '-' && first_digit == NO) {
-      AST->has_error = YES;
-      strcpy(AST->error, INVALID_NUMBER_ERROR);
-      return NO;
-    }
-    if (isdigit(*input && has_comma == NO && first_digit == NO)) {
-      AST->has_error = YES;
-      strcpy(AST->error, MISSING_COMMA_ERROR);
-      return NO;
-    }
-
-    if (*input == '+' && first_digit == YES) {
-      input++;
-    }
-
-    if (*input == ',') {
-      has_comma = YES;
-      first_digit = YES;
-      is_decimal = NO;
-    }
-    if (has_comma == YES && isdigit(*input)) {
-      has_comma = NO;
-    }
-
-    if (first_digit == NO && *input == '.') {
-      is_decimal = YES;
-    }
-    if (isdigit(*input) && first_digit == YES) {
-      first_digit = NO;
-    }
-    if (*input == '\0' && has_comma == YES) {
-      AST->has_error = YES;
-      strcpy(AST->error, INVALID_END_OF_LINE_ERROR);
-      return NO;
-    }
+  if (*input == 'r')
     input++;
+
+  input_length = strlen(input);
+  parsed_number = strtol(input, &input, BASE_TEN);
+  if (input_length != check_number_of_digits(parsed_number)) {
+    return INVALID_NUMBER;
   }
-  return YES;
+
+  if (parsed_number < lower_bound || parsed_number > upper_bound) {
+    return INVALID_NUMBER;
+  }
+
+  *result = (int)parsed_number;
+  return VALID_NUMBER;
+}
+
+int check_number_of_digits(int number) {
+  int i;
+  for (i = 0; number != 0; i++)
+    number /= 10;
+  return i;
+}
+
+int is_a_valid_label(char *input, TrieNode *keywords) {
+
+  int label_length;
+
+  if (!isalpha(*input)) {
+    return INVALID_LABEL;
+  }
+
+  label_length = strlen(input);
+  if (label_length > MAX_LABEL_LENGTH) {
+    return INVALID_LABEL;
+  }
+
+  if (search_trie(keywords, input) == YES) {
+    return INVALID_LABEL;
+  }
+
+  return VALID_LABEL;
+}
+
+void create_keywords(TrieNode *keywords) {
+  insert_trie(keywords, "mov", "mov");
+  insert_trie(keywords, "cmp", "cmp");
+  insert_trie(keywords, "add", "add");
+  insert_trie(keywords, "sub", "sub");
+  insert_trie(keywords, "not", "not");
+  insert_trie(keywords, "clr", "cle");
+  insert_trie(keywords, "lea", "lea");
+  insert_trie(keywords, "inc", "inc");
+  insert_trie(keywords, "dec", "dec");
+  insert_trie(keywords, "jmp", "jmo");
+  insert_trie(keywords, "bne", "bne");
+  insert_trie(keywords, "red", "red");
+  insert_trie(keywords, "prn", "prn");
+  insert_trie(keywords, "jsr", "jsr");
+  insert_trie(keywords, "rts", "rts");
+  insert_trie(keywords, "hlt", "hlt");
+  insert_trie(keywords, "mcr", "mcr");
+  insert_trie(keywords, "end_mcr", "end_mcr");
+}
+
+void parse_operand(char *input, int instruction, int source_destination,
+                   assembler_AST *AST, TrieNode *keywords) {
+  int *operand;
+  int check;
+  char *temp;
+
+  if (*input == '#') {
+    input++;
+    check = is_a_valid_number(input, INT_MIN, INT_MAX, operand);
+    switch (check) {
+    case VALID_NUMBER:
+      AST->AST_options.instruction
+          .AST_instruction_operand_type[source_destination]
+          .AST_instruction_operand_type.index.index_type.constant = *operand;
+      AST->AST_options.instruction
+          .AST_instruction_operand_type[source_destination]
+          .AST_instruction_operand_option =
+          AST_instruction_operand_option_constant;
+      break;
+    case INVALID_NUMBER:
+      AST->AST_type = AST_error;
+      strcpy(AST->error, INVALID_NUMBER_ERROR);
+      break;
+    case VALID_NUMBER_TOO_BIG_OR_TOO_SMALL:
+      AST->AST_type = AST_error;
+      strcpy(AST->error, NUMBER_OUT_OF_BOUNDS_ERROR);
+      break;
+    default:
+      break;
+    }
+  }
+
+  if (*input == 'r' && isdigit(*(input + 1))) {
+    input++;
+    check = is_a_valid_number(input, BOTTOM_REGISTER, TOP_REGISTER, operand);
+    switch (check) {
+    case VALID_NUMBER:
+      AST->AST_options.instruction
+          .AST_instruction_operand_type[source_destination]
+          .AST_instruction_operand_type.register_number = *operand;
+      AST->AST_options.instruction
+          .AST_instruction_operand_type[source_destination]
+          .AST_instruction_operand_option =
+          AST_instruction_operand_option_index_register;
+      break;
+    case INVALID_NUMBER:
+    case VALID_NUMBER_TOO_BIG_OR_TOO_SMALL:
+      AST->AST_type = AST_error;
+      strcpy(AST->error, INVALID_REGISTER_ERROR);
+      break;
+    default:
+      break;
+    }
+  }
+
+  temp = strchr(input, '[');
+  if (temp == NULL) {
+    check = is_a_valid_label(input, keywords);
+    switch (check) {
+      case VALID_LABEL:
+        AST->AST_options.instruction.AST_instruction_operand_type[source_destination].AST_instruction_operand_option = AST_instruction_operand_option_label;
+        strcpy(AST->AST_options.instruction.AST_instruction_operand_type[source_destination].AST_instruction_operand_type.label, input);
+        break;
+      case INVALID_LABEL:
+        AST->AST_type = AST_error;
+        strcpy(AST->error, INVALID_LABEL_ERROR);
+        break;
+      default:
+        break;
+    }
+  }
+
+
+  /*
+  
+    CONTINUE FROM HERE WITH AN ARRAY WITH A POSSIBLE INDEX OR LABEL!
+  
+  */
+
+
 }

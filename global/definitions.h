@@ -11,12 +11,15 @@
 #define INITIAL_TABLE_SIZE 100
 #define MAX_ERROR_LENGTH 300
 #define MAX_LABEL_LENGTH 32
-#define MAX_DATA_SIZE 1000
+#define MAX_DATA_SIZE 80
 #define MAX_NUM_OF_OPERANDS 2
 #define TEMP_INPUT_LENGTH 2048
 #define MAX_INT_SIZE 10
 #define BASE_TEN 10
-
+#define NUMBER_OF_OPERANDS 2
+#define NUMBER_OF_INSTRUCTIONS 16
+#define BOTTOM_REGISTER 0
+#define TOP_REGISTER 7
 
 /* SYNTAX ERRORS */
 
@@ -31,6 +34,9 @@
 #define DOUBLE_COMMA_ERROR "Error, consecutive commas.\n"
 #define MISSING_COMMA_ERROR "Error, missing comma between numbers.\n"
 #define NUMBER_TOO_LONG_ERROR "Error, number is too large.\n"
+#define INVALID_LABEL_ERROR "Error, invalid label.\n"
+#define NUMBER_OUT_OF_BOUNDS_ERROR "Error, number out of bounds.\n"
+#define INVALID_REGISTER_ERROR "Error, invalid register.\n"
 
 /* ENUMS */
 enum BOOL {
@@ -148,72 +154,127 @@ HashTable* create_table();
 
 /* FRONDEND */
 
+enum {
+  VALID_NUMBER,
+  INVALID_NUMBER,
+  VALID_NUMBER_TOO_BIG_OR_TOO_SMALL
+};
+
+enum {
+  VALID_LABEL,
+  INVALID_LABEL
+};
+
+enum {
+  AST_opcode_mov,
+  AST_opcode_cmp,
+  AST_opcode_add,
+  AST_opcode_sub,
+  AST_opcode_not,
+  AST_opcode_clr,
+  AST_opcode_lea,
+  AST_opcode_inc,
+  AST_opcode_dec,
+  AST_opcode_jmp,
+  AST_opcode_bne,
+  AST_opcode_red,
+  AST_opcode_prn,
+  AST_opcode_jsr,
+  AST_opcode_rts,
+  AST_opcode_hlt
+};
+
+enum {
+  operand_source,
+  operand_destination
+};
+
 typedef struct assembler_AST {
-  int has_error;
   char error[MAX_ERROR_LENGTH];
-  char label_name[MAX_LABEL_LENGTH];
-  enum { instruction, directive } AST_opt;
+  enum { AST_instruction, AST_directive, AST_define, AST_error } AST_type;
 
   union {
+
     struct {
-      enum { dir_data, dir_string, dir_entry, dir_extern } dir_Opt;
+      enum {
+        AST_instruction_mov,
+        AST_instruction_cmp,
+        AST_instruction_add,
+        AST_instruction_sub,
+        AST_instruction_not,
+        AST_instruction_clr,
+        AST_instruction_lea,
+        AST_instruction_ind,
+        AST_instruction_dec,
+        AST_instruction_jmp,
+        AST_instruction_bne,
+        AST_instruction_red,
+        AST_instruction_prn,
+        AST_instruction_jsr,
+        AST_instruction_rts,
+        AST_instruction_hlt
+      }AST_instruction_option;
+
+      struct {
+        enum {
+          AST_instruction_operand_option_constant,
+          AST_instruction_operand_option_label,
+          AST_instruction_operand_option_index_constant,
+          AST_instruction_operand_option_index_label,
+          AST_instruction_operand_option_index_register
+        }AST_instruction_operand_option;
+        union {
+          int constant;
+          char label[MAX_LABEL_LENGTH];
+          int register_number;
+          struct {
+            char label[MAX_LABEL_LENGTH];
+            union {
+              int constant;
+              char label[MAX_LABEL_LENGTH];
+            }index_type;
+          }index;
+        }AST_instruction_operand_type;
+      }AST_instruction_operand_type[NUMBER_OF_OPERANDS];
+
+    }instruction;
+
+
+    struct {
+      enum {
+        AST_directive_data,
+        AST_directive_string,
+        AST_directive_entry,
+        AST_directive_extern
+      } AST_directive_type;
 
       union {
-        char *entry_extern_label;
-        char *string;
         struct {
-          int data[MAX_DATA_SIZE];
-          int data_count;
-        } data;
-      } directive_operand;
+          enum {
+            AST_directive_data_constant,
+            AST_directive_data_label
+          } AST_directive_data_options;
+          union {
+            char label[MAX_LABEL_LENGTH];
+            int constant;
+          } AST_directive_data_type[MAX_DATA_SIZE];
+        } AST_directive_data;
+        char *string;
+        char label[MAX_LABEL_LENGTH];
+      } AST_directive_options;
     } directive;
 
     struct {
-      enum {
-        mov,
-        cmp,
-        add,
-        sub,
-        Not,
-        clr,
-        lea,
-        inc,
-        dec,
-        jmp,
-        bne,
-        red,
-        prn,
-        jsr,
-        rts,
-        hlt
-      } possible_command;
-      enum {
-        no_operands,
-        const_operand,    /* CONSTANT NUMBER */
-        label_operand,    /* VARIABLE */
-        register_operand, /* REGISTER */
-        indexed_operand   /* ARRAY */
-      } operand_options[MAX_NUM_OF_OPERANDS];
-      union {
-        int const_number;
-        int register_number;
-        char *label;
-        struct {
-          union {
-            struct {
-              char *label;
-              int index;
-            }constant;
-            struct {
-              char *array;
-              char *label;
-              int index;
-            }labeled_index;
-          }possible_index;
-        }index;
-      } operands[MAX_NUM_OF_OPERANDS];
-    } instruction;
-  } AST_type;
-
+      char label[MAX_LABEL_LENGTH];
+      int number;
+    }define;
+  } AST_options;
 } assembler_AST;
+
+
+
+
+
+
+
 #endif
