@@ -104,12 +104,13 @@ void create_keywords(TrieNode *keywords) {
   insert_trie(keywords, "end_mcr", "end_mcr");
 }
 
-void parse_operand(char *input, int instruction, int source_destination,
+int parse_operand(char *input, int instruction, int source_destination,
                    assembler_AST *AST, TrieNode *keywords) {
   int *operand;
   int check;
   int label_name_length;
   char *temp;
+  char *first_letter_of_index;
   char label[MAX_LABEL_LENGTH];
   char temp_label[MAX_LABEL_LENGTH];
   union possible_operand {
@@ -117,6 +118,9 @@ void parse_operand(char *input, int instruction, int source_destination,
     char label[MAX_LABEL_LENGTH];
   };
 
+  operand = NULL;
+
+  /* CHECK IF CONSTANT */
   if (*input == '#') {
     input++;
     check = is_a_valid_number(input, INT_MIN, INT_MAX, operand);
@@ -129,20 +133,21 @@ void parse_operand(char *input, int instruction, int source_destination,
           .AST_instruction_operand_type[source_destination]
           .AST_instruction_operand_option =
           AST_instruction_operand_option_constant;
-      break;
+      return CONSTANT;
     case INVALID_NUMBER:
       AST->AST_type = AST_error;
       strcpy(AST->error, INVALID_NUMBER_ERROR);
-      break;
+      return INVALID_OPERAND;
     case VALID_NUMBER_TOO_BIG_OR_TOO_SMALL:
       AST->AST_type = AST_error;
       strcpy(AST->error, NUMBER_OUT_OF_BOUNDS_ERROR);
-      break;
+      return INVALID_OPERAND;
     default:
       break;
     }
   }
 
+  /* CHECK IF REGISTER */
   if (*input == 'r' && isdigit(*(input + 1))) {
     input++;
     check = is_a_valid_number(input, BOTTOM_REGISTER, TOP_REGISTER, operand);
@@ -155,18 +160,21 @@ void parse_operand(char *input, int instruction, int source_destination,
           .AST_instruction_operand_type[source_destination]
           .AST_instruction_operand_option =
           AST_instruction_operand_option_index_register;
-      break;
+      return REGISTER;
     case INVALID_NUMBER:
     case VALID_NUMBER_TOO_BIG_OR_TOO_SMALL:
       AST->AST_type = AST_error;
       strcpy(AST->error, INVALID_REGISTER_ERROR);
-      break;
+      return INVALID_OPERAND;
     default:
       break;
     }
   }
 
   temp = strchr(input, '[');
+
+  /* CHECK IF ARRAY */
+
   if (temp == NULL) {
     check = is_a_valid_label(input, keywords);
     switch (check) {
@@ -179,14 +187,15 @@ void parse_operand(char *input, int instruction, int source_destination,
                  .AST_instruction_operand_type[source_destination]
                  .AST_instruction_operand_type.label,
              input);
-      break;
+      return LABEL;
     case INVALID_LABEL:
       AST->AST_type = AST_error;
       strcpy(AST->error, INVALID_LABEL_ERROR);
-      break;
+      return INVALID_OPERAND;
     default:
       break;
     }
+
   } else {
     temp--;
     label_name_length = temp - input;
@@ -198,26 +207,162 @@ void parse_operand(char *input, int instruction, int source_destination,
                  .AST_instruction_operand_type[source_destination]
                  .AST_instruction_operand_type.index.label,
              label);
-
-        temp = strchr(temp, ']');
-        if (temp == NULL) {
-          AST->AST_type = AST_error;
-          strcpy(AST->error, INVALID_INDEX_ERROR);
-          return;
-        }
-        temp--;
-
-
-      break;
+      first_letter_of_index = temp + 2;
+      temp = strchr(temp, ']');
+      if (temp == NULL) {
+        AST->AST_type = AST_error;
+        strcpy(AST->error, INVALID_INDEX_ERROR);
+        return INVALID_OPERAND;
+      }
+      temp--;
+      label_name_length = temp - first_letter_of_index;
+      strncpy(temp_label, first_letter_of_index, label_name_length);
+      check = does_label_jave_only_digits(temp_label);
+      switch (check) {
+        case YES:
+          AST->AST_options.instruction
+              .AST_instruction_operand_type[source_destination]
+              .AST_instruction_operand_type.index.index_type.constant =
+              (int) strtol(temp_label, NULL, BASE_TEN);
+          AST->AST_options.instruction
+              .AST_instruction_operand_type[source_destination]
+              .AST_instruction_operand_option =
+              AST_instruction_operand_option_index_constant;
+          break;
+        case NO:
+          check = is_a_valid_label(temp_label, keywords);
+          switch (check) {
+            case VALID_LABEL:
+              strcpy(AST->AST_options.instruction
+                         .AST_instruction_operand_type[source_destination]
+                         .AST_instruction_operand_type.index.index_type.label,
+                     temp_label);
+              AST->AST_options.instruction
+                  .AST_instruction_operand_type[source_destination]
+                  .AST_instruction_operand_option =
+                  AST_instruction_operand_option_index_label;
+              return INDEX;
+            case INVALID_LABEL:
+              AST->AST_type = AST_error;
+              strcpy(AST->error, INVALID_INDEX_ERROR);
+              return INVALID_OPERAND;
+          }
+          break;
+      }
+        break;
     case INVALID_LABEL:
       AST->AST_type = AST_error;
       strcpy(AST->error, INVALID_LABEL_ERROR);
+    }
+  }
+  return INVALID_OPERAND;
+}
+
+int does_label_jave_only_digits(char *input) {
+  while (*input != '\0') {
+    if (!isdigit(*input)) {
+      return NO;
+    }
+    input++;
+  }
+  return YES;
+}
+
+separated_strings_from_input_line separate_input_line(char *input) {
+  int number_of_strings;
+  int was_separated_successfully;
+  separated_strings_from_input_line separated_strings = {0};
+  char *temp;
+
+  was_separated_successfully = remove_spaces_within_brackets(input, input);
+  if (was_separated_successfully == NO) {
+    separated_strings.error = YES;
+    return separated_strings;
+  }
+
+  separated_strings.error = NO;
+
+  while (isspace(*input)) {
+    input++;
+  }
+
+  if (*input == '\0') {
+    return separated_strings;
+  }
+
+  number_of_strings = 0;
+  do {
+    separated_strings.separated_strings[number_of_strings++] = input;
+    temp = strpbrk(input, BREAKERS);
+    if (temp) {
+      *temp = '\0';
+      temp++;
+      while (isspace(*temp))
+        temp++;
+      if (*temp == '\0') {
+        break;
+      }
+      input = temp;
+    } else {
       break;
     }
+  } while (FOREVER);
+  separated_strings.number_of_strings = number_of_strings;
+  return separated_strings;
+}
 
-    /*
+int remove_spaces_within_brackets(char* input, char* output) {
+  char* temp;
+  char output_temp[MAX_LINE_LENGTH] = {0};
+  int i;
+  int within_brackets = NO;
+  int first_string = NO;
 
-      CONTINUE FROM HERE WITH AN ARRAY WITH A POSSIBLE INDEX OR LABEL!
+  i = 0;
+  temp = input;
+  while (*temp != '\0') {
 
-    */
+    if (*temp == '[') {
+      within_brackets = YES;
+      output_temp[i] = *temp;
+      i++;
+      temp++;
+      continue;
+    }
+    if (*temp == ']') {
+      within_brackets = NO;
+      first_string = NO;
+      output_temp[i] = *temp;
+      i++;
+      temp++;
+      continue;
+    }
+    if (within_brackets == YES) {
+      if (isspace(*temp) && first_string == NO) {
+        temp++;
+        continue;
+      }
+      if (!isspace(*temp) && first_string == NO) {
+        first_string = YES;
+        output_temp[i] = *temp;
+        i++;
+        temp++;
+        continue;
+      }
+      if (isspace(*temp) && first_string == YES) {
+        temp++;
+        continue;
+      }
+      if (!isspace(*temp) && first_string == YES) {
+        return NO;
+      }
+    }
+
+    output_temp[i] = *temp;
+    i++;
+    temp++;
   }
+  strcpy(output, output_temp);
+  return YES;
+
+} 

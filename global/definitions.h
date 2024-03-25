@@ -20,6 +20,8 @@
 #define NUMBER_OF_INSTRUCTIONS 16
 #define BOTTOM_REGISTER 0
 #define TOP_REGISTER 7
+#define BREAKERS " \t\v"
+#define FOREVER 1
 
 /* SYNTAX ERRORS */
 
@@ -189,6 +191,22 @@ enum {
   operand_source,
   operand_destination
 };
+
+enum {
+  INVALID_OPERAND,
+  CONSTANT,
+  REGISTER,
+  LABEL,
+  INDEX
+};
+
+
+typedef struct separated_strings_from_input_line {
+  char *separated_strings[MAX_LINE_LENGTH];
+  int number_of_strings;
+  int error;
+}separated_strings_from_input_line;
+
 
 typedef struct assembler_AST {
   char error[MAX_ERROR_LENGTH];

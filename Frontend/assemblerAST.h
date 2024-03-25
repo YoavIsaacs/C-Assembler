@@ -38,11 +38,22 @@ int is_a_valid_label(char *, TrieNode *);
  */
 void create_keywords(TrieNode *);
 
-
 /**
  * @brief This function parses an operand and stores it in the AST.
- * 
+ *
+ *@return   INVALID_OPERAND if the parsed operand is invalid
+            CONSTANT if the parsed operand is a constant
+            REGISTER if the parsed operand is a register
+            LABEL if the parsed operand is a label
+            INDEX if the parsed operand is an index
+
  */
-void parse_operand(char *, int, int, assembler_AST *, TrieNode *);
+int parse_operand(char *, int, int, assembler_AST *, TrieNode *);
+
+
+int does_label_jave_only_digits(char *input);
+
+separated_strings_from_input_line separate_input_line(char *);
+int remove_spaces_within_brackets(char *, char *);
 
 #endif

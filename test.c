@@ -1,12 +1,16 @@
-#include "./Preprocessor/preprocessor.h"
 #include <string.h>
+#include "Frontend/assemblerAST.h"
+#include "global/definitions.h"
 
 int main(int argc, char *argv[]) {
-    char name[100];
-    if (argc < 2) {
-        printf("Missing file name\n");
-        return 1;
+
+  int i;
+  separated_strings_from_input_line s;
+  char temp[100] = "d s[   5   ] , , , st   hfjk[jhklr4hljk4rl                      ]";
+  s = separate_input_line(temp);
+
+    for (i = 0; i < s.number_of_strings; i++) {
+      printf("%s\n", s.separated_strings[i]);
     }
-    strcpy(name, preprocessor(argv[1]));
-    return 0;
+  return 0;
 }

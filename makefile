@@ -7,14 +7,14 @@ OBJ_DIR		= $(BUILD_DIR)/obj
 BIN_DIR		= $(BUILD_DIR)/bin
 ZIP_NAME	= Maman14.zip
 ifdef DEBUG
-CFLAGS += -g
+CFLAGS += -g -fsanitize=address
 endif
 
 .PHONY: clean build_env all
 
 all: build_env $(PROG_NAME) 
 
-$(PROG_NAME): test.o trie.o linkedList.o macro.o preprocessor.o
+$(PROG_NAME): test.o trie.o linkedList.o macro.o preprocessor.o assemblerAST.o
 	$(CC) $(CFLAGS) $(OBJ_DIR)/*.o -o $(BIN_DIR)/$@ $(LDFLAGS)
 
 test.o: test.c Preprocessor/preprocessor.h \
@@ -37,6 +37,14 @@ preprocessor.o: Preprocessor/preprocessor.c Preprocessor/preprocessor.h \
  Preprocessor/../DataStructures/../global/definitions.h \
  Preprocessor/../DataStructures/linkedList.h \
  Preprocessor/../DataStructures/trie.h
+
+
+assemblerAST.o: Frontend/assemblerAST.c Frontend/assemblerAST.h \
+ Frontend/../global/definitions.h Frontend/../Preprocessor/preprocessor.h \
+ Frontend/../Preprocessor/../DataStructures/macro.h \
+ Frontend/../Preprocessor/../DataStructures/../global/definitions.h \
+ Frontend/../Preprocessor/../DataStructures/linkedList.h \
+ Frontend/../Preprocessor/../DataStructures/trie.h
 
 %.o:
 	$(CC) $(CFLAGS) -c $< -o $(OBJ_DIR)/$@
