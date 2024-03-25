@@ -37,6 +37,7 @@
 #define INVALID_LABEL_ERROR "Error, invalid label.\n"
 #define NUMBER_OUT_OF_BOUNDS_ERROR "Error, number out of bounds.\n"
 #define INVALID_REGISTER_ERROR "Error, invalid register.\n"
+#define INVALID_INDEX_ERROR "Error, invalid index.\n"
 
 /* ENUMS */
 enum BOOL {

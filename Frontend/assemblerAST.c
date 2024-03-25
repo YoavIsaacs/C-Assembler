@@ -5,7 +5,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-
 struct allowed_operands_for_instructions {
   char *instruction_name;
   int instruction_opcode;
@@ -109,7 +108,14 @@ void parse_operand(char *input, int instruction, int source_destination,
                    assembler_AST *AST, TrieNode *keywords) {
   int *operand;
   int check;
+  int label_name_length;
   char *temp;
+  char label[MAX_LABEL_LENGTH];
+  char temp_label[MAX_LABEL_LENGTH];
+  union possible_operand {
+    int constant;
+    char label[MAX_LABEL_LENGTH];
+  };
 
   if (*input == '#') {
     input++;
@@ -164,25 +170,54 @@ void parse_operand(char *input, int instruction, int source_destination,
   if (temp == NULL) {
     check = is_a_valid_label(input, keywords);
     switch (check) {
-      case VALID_LABEL:
-        AST->AST_options.instruction.AST_instruction_operand_type[source_destination].AST_instruction_operand_option = AST_instruction_operand_option_label;
-        strcpy(AST->AST_options.instruction.AST_instruction_operand_type[source_destination].AST_instruction_operand_type.label, input);
-        break;
-      case INVALID_LABEL:
-        AST->AST_type = AST_error;
-        strcpy(AST->error, INVALID_LABEL_ERROR);
-        break;
-      default:
-        break;
+    case VALID_LABEL:
+      AST->AST_options.instruction
+          .AST_instruction_operand_type[source_destination]
+          .AST_instruction_operand_option =
+          AST_instruction_operand_option_label;
+      strcpy(AST->AST_options.instruction
+                 .AST_instruction_operand_type[source_destination]
+                 .AST_instruction_operand_type.label,
+             input);
+      break;
+    case INVALID_LABEL:
+      AST->AST_type = AST_error;
+      strcpy(AST->error, INVALID_LABEL_ERROR);
+      break;
+    default:
+      break;
     }
+  } else {
+    temp--;
+    label_name_length = temp - input;
+    strncpy(label, input, label_name_length);
+    check = is_a_valid_label(label, keywords);
+    switch (check) {
+    case VALID_LABEL:
+      strcpy(AST->AST_options.instruction
+                 .AST_instruction_operand_type[source_destination]
+                 .AST_instruction_operand_type.index.label,
+             label);
+
+        temp = strchr(temp, ']');
+        if (temp == NULL) {
+          AST->AST_type = AST_error;
+          strcpy(AST->error, INVALID_INDEX_ERROR);
+          return;
+        }
+        temp--;
+
+
+      break;
+    case INVALID_LABEL:
+      AST->AST_type = AST_error;
+      strcpy(AST->error, INVALID_LABEL_ERROR);
+      break;
+    }
+
+    /*
+
+      CONTINUE FROM HERE WITH AN ARRAY WITH A POSSIBLE INDEX OR LABEL!
+
+    */
   }
-
-
-  /*
-  
-    CONTINUE FROM HERE WITH AN ARRAY WITH A POSSIBLE INDEX OR LABEL!
-  
-  */
-
-
-}
