@@ -20,7 +20,7 @@
 #define NUMBER_OF_INSTRUCTIONS 16
 #define BOTTOM_REGISTER 0
 #define TOP_REGISTER 7
-#define BREAKERS " \t\v"
+#define BREAKERS " \t\v,"
 #define FOREVER 1
 
 /* SYNTAX ERRORS */

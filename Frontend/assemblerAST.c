@@ -105,7 +105,7 @@ void create_keywords(TrieNode *keywords) {
 }
 
 int parse_operand(char *input, int instruction, int source_destination,
-                   assembler_AST *AST, TrieNode *keywords) {
+                  assembler_AST *AST, TrieNode *keywords) {
   int *operand;
   int check;
   int label_name_length;
@@ -219,37 +219,37 @@ int parse_operand(char *input, int instruction, int source_destination,
       strncpy(temp_label, first_letter_of_index, label_name_length);
       check = does_label_jave_only_digits(temp_label);
       switch (check) {
-        case YES:
-          AST->AST_options.instruction
-              .AST_instruction_operand_type[source_destination]
-              .AST_instruction_operand_type.index.index_type.constant =
-              (int) strtol(temp_label, NULL, BASE_TEN);
+      case YES:
+        AST->AST_options.instruction
+            .AST_instruction_operand_type[source_destination]
+            .AST_instruction_operand_type.index.index_type.constant =
+            (int)strtol(temp_label, NULL, BASE_TEN);
+        AST->AST_options.instruction
+            .AST_instruction_operand_type[source_destination]
+            .AST_instruction_operand_option =
+            AST_instruction_operand_option_index_constant;
+        break;
+      case NO:
+        check = is_a_valid_label(temp_label, keywords);
+        switch (check) {
+        case VALID_LABEL:
+          strcpy(AST->AST_options.instruction
+                     .AST_instruction_operand_type[source_destination]
+                     .AST_instruction_operand_type.index.index_type.label,
+                 temp_label);
           AST->AST_options.instruction
               .AST_instruction_operand_type[source_destination]
               .AST_instruction_operand_option =
-              AST_instruction_operand_option_index_constant;
-          break;
-        case NO:
-          check = is_a_valid_label(temp_label, keywords);
-          switch (check) {
-            case VALID_LABEL:
-              strcpy(AST->AST_options.instruction
-                         .AST_instruction_operand_type[source_destination]
-                         .AST_instruction_operand_type.index.index_type.label,
-                     temp_label);
-              AST->AST_options.instruction
-                  .AST_instruction_operand_type[source_destination]
-                  .AST_instruction_operand_option =
-                  AST_instruction_operand_option_index_label;
-              return INDEX;
-            case INVALID_LABEL:
-              AST->AST_type = AST_error;
-              strcpy(AST->error, INVALID_INDEX_ERROR);
-              return INVALID_OPERAND;
-          }
-          break;
-      }
+              AST_instruction_operand_option_index_label;
+          return INDEX;
+        case INVALID_LABEL:
+          AST->AST_type = AST_error;
+          strcpy(AST->error, INVALID_INDEX_ERROR);
+          return INVALID_OPERAND;
+        }
         break;
+      }
+      break;
     case INVALID_LABEL:
       AST->AST_type = AST_error;
       strcpy(AST->error, INVALID_LABEL_ERROR);
@@ -268,6 +268,7 @@ int does_label_jave_only_digits(char *input) {
   return YES;
 }
 
+/*
 separated_strings_from_input_line separate_input_line(char *input) {
   int number_of_strings;
   int was_separated_successfully;
@@ -291,9 +292,11 @@ separated_strings_from_input_line separate_input_line(char *input) {
   }
 
   number_of_strings = 0;
+  
   do {
     separated_strings.separated_strings[number_of_strings++] = input;
     temp = strpbrk(input, BREAKERS);
+    
     if (temp) {
       *temp = '\0';
       temp++;
@@ -307,16 +310,76 @@ separated_strings_from_input_line separate_input_line(char *input) {
       break;
     }
   } while (FOREVER);
-  separated_strings.number_of_strings = number_of_strings;
-  return separated_strings;
+      
+    separated_strings.number_of_strings = number_of_strings;
+    return separated_strings;
+  }
+*/
+
+separated_strings_from_input_line separate_input_line(char *input) {
+    int number_of_strings;
+    int was_separated_successfully;
+    separated_strings_from_input_line separated_strings = {0};
+    char *temp;
+
+    was_separated_successfully = remove_spaces_within_brackets(input, input);
+    if (was_separated_successfully == NO) {
+        separated_strings.error = YES;
+        return separated_strings;
+    }
+
+    separated_strings.error = NO;
+
+    while (isspace(*input)) {
+        input++;
+    }
+
+    if (*input == '\0') {
+        return separated_strings;
+    }
+
+    number_of_strings = 0;
+
+    do {
+            separated_strings.separated_strings[number_of_strings++] = input;
+        temp = strpbrk(input, BREAKERS);
+
+        if (temp && *temp != ',') {
+            *temp = '\0';
+            temp++;
+            while (isspace(*temp))
+                temp++;
+            if (*temp == '\0') {
+                break;
+            }
+            input = temp;
+        } else if (temp && *temp == ',') {
+            *temp = '\0';
+            separated_strings.separated_strings[number_of_strings++] = ",";
+            temp++;
+            while (isspace(*temp))
+                temp++;
+            if (*temp == '\0') {
+                break;
+            }
+            input = temp;
+        } else {
+            break;
+        }
+    } while (FOREVER);
+
+    separated_strings.number_of_strings = number_of_strings;
+    return separated_strings;
 }
 
-int remove_spaces_within_brackets(char* input, char* output) {
-  char* temp;
+
+int remove_spaces_within_brackets(char *input, char *output) {
+  char *temp;
   char output_temp[MAX_LINE_LENGTH] = {0};
   int i;
   int within_brackets = NO;
-  int first_string = NO;
+  int first_word = NO;
+  int first_string_ended = NO;
 
   i = 0;
   temp = input;
@@ -324,6 +387,8 @@ int remove_spaces_within_brackets(char* input, char* output) {
 
     if (*temp == '[') {
       within_brackets = YES;
+      first_word = YES;
+      first_string_ended = NO;
       output_temp[i] = *temp;
       i++;
       temp++;
@@ -331,29 +396,33 @@ int remove_spaces_within_brackets(char* input, char* output) {
     }
     if (*temp == ']') {
       within_brackets = NO;
-      first_string = NO;
+      first_string_ended = NO;
       output_temp[i] = *temp;
       i++;
       temp++;
       continue;
     }
     if (within_brackets == YES) {
-      if (isspace(*temp) && first_string == NO) {
+      if (isspace(*temp) && first_string_ended == NO) {
         temp++;
         continue;
       }
-      if (!isspace(*temp) && first_string == NO) {
-        first_string = YES;
+      if (!isspace(*temp) && first_string_ended == NO) {
         output_temp[i] = *temp;
         i++;
         temp++;
         continue;
       }
-      if (isspace(*temp) && first_string == YES) {
+      if (isspace(*temp) && first_string_ended == YES) {
         temp++;
         continue;
       }
-      if (!isspace(*temp) && first_string == YES) {
+      if (isspace(*input) && first_word == YES) {
+        first_string_ended = YES;
+        temp++;
+        continue;
+      }
+      if (!isspace(*temp) && first_string_ended == YES) {
         return NO;
       }
     }
@@ -364,5 +433,4 @@ int remove_spaces_within_brackets(char* input, char* output) {
   }
   strcpy(output, output_temp);
   return YES;
-
-} 
+}
