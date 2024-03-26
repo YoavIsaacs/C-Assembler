@@ -50,10 +50,21 @@ void create_keywords(TrieNode *);
  */
 int parse_operand(char *, int, int, assembler_AST *, TrieNode *);
 
+int parse_directive(char *);
 
-int does_label_jave_only_digits(char *input);
+
+int does_label_have_only_digits(char *input);
 
 separated_strings_from_input_line separate_input_line(char *);
 int remove_spaces_within_brackets(char *, char *);
+assembler_AST *parse_data(char *, assembler_AST *);
+assembler_AST *parse_string(char *, assembler_AST *);
+assembler_AST *parse_entry(char *, assembler_AST *);
+assembler_AST *parse_extern(char *, assembler_AST *);
+assembler_AST *parse_define(char *, assembler_AST *);
+
+int check_allowed_operand(int, int, int);
+
+int check_valid_end_of_line(int, int);
 
 #endif

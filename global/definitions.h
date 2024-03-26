@@ -22,6 +22,9 @@
 #define TOP_REGISTER 7
 #define BREAKERS " \t\v,"
 #define FOREVER 1
+#define NUMBER_OF_VALID_OPERANDS_FOR_DEFINE 4
+#define NUMBER_OF_VALID_OPERANDS_FOR_TWO_OPERAND_INSTRUCTIONS 4
+#define NUMBER_OF_VALID_OPERANDS_FOR_ONE_OPERAND_INSTRUCTIONS 2
 
 /* SYNTAX ERRORS */
 
@@ -33,13 +36,18 @@
 #define ILLEGAL_STRING_ERROR "Error, illegal string.\n"
 #define INVALID_NUMBER_ERROR "Error, illegal number detected.\n"
 #define INVALID_END_OF_LINE_ERROR "Error, line cannot end with a comma.\n"
-#define DOUBLE_COMMA_ERROR "Error, consecutive commas.\n"
+#define EXCESS_COMMA_ERROR "Error, excess commas in command.\n"
 #define MISSING_COMMA_ERROR "Error, missing comma between numbers.\n"
 #define NUMBER_TOO_LONG_ERROR "Error, number is too large.\n"
 #define INVALID_LABEL_ERROR "Error, invalid label.\n"
 #define NUMBER_OUT_OF_BOUNDS_ERROR "Error, number out of bounds.\n"
 #define INVALID_REGISTER_ERROR "Error, invalid register.\n"
 #define INVALID_INDEX_ERROR "Error, invalid index.\n"
+#define INVALID_STRING_ERROR "Error, invalid string.\n"
+#define EXCESS_STRINGS_ERROR "Error, extra text after the end of the line.\n"
+#define INVALID_DEFINE_ERROR "Error, invalid number of operands for .define.\n"
+#define INVALID_INSTRUCTION_ERROR "Error, invalid number of operands for instruction.\n"
+#define INVALID_OPERAND_ERROR "Error, invalid operand.\n"
 
 /* ENUMS */
 enum BOOL {
@@ -200,6 +208,15 @@ enum {
   INDEX
 };
 
+enum { 
+  DATA,
+  STRING,
+  ENTRY,
+  EXTERN,
+  DEFINE,
+  INVALID_DIRECTIVE
+};
+
 
 typedef struct separated_strings_from_input_line {
   char *separated_strings[MAX_LINE_LENGTH];
@@ -211,6 +228,7 @@ typedef struct separated_strings_from_input_line {
 typedef struct assembler_AST {
   char error[MAX_ERROR_LENGTH];
   enum { AST_instruction, AST_directive, AST_define, AST_error } AST_type;
+  char label[MAX_LABEL_LENGTH];
 
   union {
 
@@ -278,7 +296,7 @@ typedef struct assembler_AST {
             int constant;
           } AST_directive_data_type[MAX_DATA_SIZE];
         } AST_directive_data;
-        char *string;
+        char string[MAX_LABEL_LENGTH];
         char label[MAX_LABEL_LENGTH];
       } AST_directive_options;
     } directive;
