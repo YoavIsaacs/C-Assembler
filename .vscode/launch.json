@@ -9,7 +9,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/bin/preproc",
-            "args": ["test1.as"],
+            "args": ["test1"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}/build/bin",
             "environment": [],

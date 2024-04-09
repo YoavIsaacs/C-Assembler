@@ -7,59 +7,70 @@
 
 
 
+
+/* NEED TO FREE THE AST AND THE OPERAND */
+
 assembler_AST *create_assembler_AST(char *input) {
 
   int substring_number = 0;
   int substring_length;
   int checker;
-  int temp_number;
   int i;
   int data_count;
   int num_of_commas;
   int opcode;
   int has_label_to_check_for_allowed_num_of_strings;
-  int *operand;
-  char *temp_string;
-  char define_name[MAX_LABEL_LENGTH] = {0};
-  
-  TrieNode *keywords;
-  
+  int operand;
+  char temp_string[MAX_LINE_LENGTH] = {0};
+
+
   separated_strings_from_input_line separated_strings;
 
-  separated_strings = separate_input_line(input);
-  if (separated_strings.error == YES) {
-    return NULL;
-  }
-
+  TrieNode *keywords = create_trie_node();
   assembler_AST *AST = (assembler_AST *)malloc(sizeof(assembler_AST));
   if (AST == NULL) {
     printf("%s\n", MEMORY_ALLOCATION_ERROR);
     exit(1);
   }
 
+
+  separated_strings = separate_input_line(input);
+  if (separated_strings.error == YES) {
+    delete_trie(keywords);
+    return NULL;
+  }
   create_keywords(keywords);
+  AST->error[0] = '\0';
+  has_label_to_check_for_allowed_num_of_strings = NO;
+
+  
 
   /* CHECKING IF THERE's A LABLE IN THE BEGINNING */
 
-  substring_length = strlen(separated_strings.separated_strings[substring_number]);
+  substring_length =
+      strlen(separated_strings.separated_strings[substring_number]);
 
-  if (separated_strings.separated_strings[substring_number][substring_length - 1] == ':') {
+  if (separated_strings
+          .separated_strings[substring_number][substring_length - 1] == ':') {
 
-    checker = is_a_valid_label(separated_strings.separated_strings[substring_number], keywords);
+    checker = is_a_valid_label(
+        separated_strings.separated_strings[substring_number], keywords);
 
     if (checker == INVALID_LABEL) {
       AST->AST_type = AST_error;
       strcpy(AST->error, INVALID_LABEL_ERROR);
+    delete_trie(keywords);
       return AST;
     }
     strcpy(AST->label, separated_strings.separated_strings[substring_number]);
     substring_number++;
     has_label_to_check_for_allowed_num_of_strings = YES;
+  } else {
+      AST->label[0] = '\0';
   }
 
-  /* CHECKING FOR DIRECTIVES */
 
-  
+  /* CHECKING FOR DIRECTIVES */
 
   checker =
       parse_directive(separated_strings.separated_strings[substring_number]);
@@ -67,48 +78,75 @@ assembler_AST *create_assembler_AST(char *input) {
   case DATA:
 
     substring_number++;
-    for (i = substring_number, data_count = 0; i < separated_strings.number_of_strings; i++, data_count++) {
+    for (i = substring_number, data_count = 0;
+         i < separated_strings.number_of_strings; i++, data_count++) {
       if (isalpha(*separated_strings.separated_strings[i])) {
-        checker = is_a_valid_label(separated_strings.separated_strings[i], keywords);
+        checker =
+            is_a_valid_label(separated_strings.separated_strings[i], keywords);
         if (checker == INVALID_LABEL) {
           AST->AST_type = AST_error;
           strcpy(AST->error, INVALID_LABEL_ERROR);
+          delete_trie(keywords);
           return AST;
         }
-        if (checker == VALID_LABEL) {
-          AST->AST_options.directive.AST_directive_options.AST_directive_data.AST_directive_data_options = AST_directive_data_label;
-        strcpy(AST->AST_options.directive.AST_directive_options.AST_directive_data.AST_directive_data_type[data_count].label, separated_strings.separated_strings[i]);
-        continue;
-        } else {
+        else if (checker == VALID_LABEL) {
+
+          i++;
+          if (i < separated_strings.number_of_strings &&
+              strcmp(separated_strings.separated_strings[i], ",") != 0) {
+            AST->AST_type = AST_error;
+            strcpy(AST->error, MISSING_COMMA_ERROR);
+            delete_trie(keywords);
+            return AST;
+        }
+
+          AST->AST_options.directive.AST_directive_options.AST_directive_data[data_count].AST_directive_data_options = AST_directive_data_label;
+          strcpy(AST->AST_options.directive.AST_directive_options.AST_directive_data[data_count].AST_directive_data_type.label, separated_strings.separated_strings[i - 1]);
+          AST->AST_options.directive.AST_directive_options.AST_directive_data[data_count].AST_directive_data_type.label[strlen(separated_strings.separated_strings[i - 1])] = '\0';
+          continue;
+        
+        }
+      } else {
+        checker = is_a_valid_number(separated_strings.separated_strings[i],
+                                    INT_MIN, INT_MAX, &operand);
+        if (checker == INVALID_NUMBER) {
           AST->AST_type = AST_error;
-          strcpy(AST->error, INVALID_LABEL_ERROR);
+          strcpy(AST->error, INVALID_NUMBER_ERROR);
+
+          free(keywords);
           return AST;
         }
-      checker = is_a_valid_number(separated_strings.separated_strings[i], INT_MAX, INT_MIN, operand);
-      if (checker == INVALID_NUMBER) {
-        AST->AST_type = AST_error;
-        strcpy(AST->error, INVALID_NUMBER_ERROR);
-        return AST;
-      }
-      if (checker == VALID_NUMBER_TOO_BIG_OR_TOO_SMALL) {
-        AST->AST_type = AST_error;
-        strcpy(AST->error, NUMBER_OUT_OF_BOUNDS_ERROR);
-        return AST;
-      }
-      AST->AST_options.directive.AST_directive_options.AST_directive_data.AST_directive_data_options = AST_directive_data_constant;
-      AST->AST_options.directive.AST_directive_options.AST_directive_data.AST_directive_data_type[data_count].constant = *operand;
+        if (checker == VALID_NUMBER_TOO_BIG_OR_TOO_SMALL) {
+          AST->AST_type = AST_error;
+          strcpy(AST->error, NUMBER_OUT_OF_BOUNDS_ERROR);
+          return AST;
+        }
+
+        i++;
+        if (i < separated_strings.number_of_strings && strcmp(separated_strings.separated_strings[i], ",") != 0) {
+          AST->AST_type = AST_error;
+          strcpy(AST->error, MISSING_COMMA_ERROR);
+          delete_trie(keywords);
+          return AST;
+        }
+
+        AST->AST_options.directive.AST_directive_options.AST_directive_data[data_count].AST_directive_data_options = AST_directive_data_constant;
+        AST->AST_options.directive.AST_directive_options.AST_directive_data[data_count].AST_directive_data_type.constant = operand;
       }
     }
+    AST->AST_options.directive.num_of_data_entries = data_count;
     AST->AST_type = AST_directive;
     AST->AST_options.directive.AST_directive_type = AST_directive_data;
     return AST;
   case STRING:
-    if (*(separated_strings.separated_strings[substring_number + 1]) != '"') {
+    substring_number++;
+    if (strncmp(separated_strings.separated_strings[substring_number], "\"", 1) != 0) {
+      printf("%s\n", separated_strings.separated_strings[substring_number]);
       AST->AST_type = AST_error;
       strcpy(AST->error, INVALID_STRING_ERROR);
       return AST;
     }
-    if (*(separated_strings.separated_strings[substring_number + 1] + strlen(separated_strings.separated_strings[substring_number + 1]) - 1) != '"') {
+    if (strncmp(separated_strings.separated_strings[substring_number] + strlen(separated_strings.separated_strings[substring_number]) - 1, "\"", 1) != 0){
       AST->AST_type = AST_error;
       strcpy(AST->error, INVALID_STRING_ERROR);
       return AST;
@@ -116,86 +154,109 @@ assembler_AST *create_assembler_AST(char *input) {
 
     /* CHECK FOR EXCESS STRINGS */
 
-    checker = check_valid_end_of_line(substring_number, separated_strings.number_of_strings -1 );
+    checker = check_valid_end_of_line(substring_number,
+                                      separated_strings.number_of_strings - 1);
     if (checker == YES) {
-    strncpy(AST->AST_options.directive.AST_directive_options.string, separated_strings.separated_strings[substring_number + 1] + 1, strlen(separated_strings.separated_strings[substring_number + 1]) - 2);
-    AST->AST_type = AST_directive;
-    AST->AST_options.directive.AST_directive_type = AST_directive_string;
-    return AST;
+      strncpy(
+          AST->AST_options.directive.AST_directive_options.string,
+          separated_strings.separated_strings[substring_number] + 1,
+          strlen(separated_strings.separated_strings[substring_number]) -
+              2);
+      AST->AST_type = AST_directive;
+      AST->AST_options.directive.AST_directive_type = AST_directive_string;
+      return AST;
     } else {
       AST->AST_type = AST_error;
       strcpy(AST->error, EXCESS_STRINGS_ERROR);
+      delete_trie(keywords);
       return AST;
     }
   case ENTRY:
-    checker = is_a_valid_label(separated_strings.separated_strings[substring_number + 1], keywords);
+    checker = is_a_valid_label(
+        separated_strings.separated_strings[substring_number + 1], keywords);
     if (checker == INVALID_LABEL) {
       AST->AST_type = AST_error;
       strcpy(AST->error, INVALID_LABEL_ERROR);
+      delete_trie(keywords);
       return AST;
     }
-    checker = check_valid_end_of_line(substring_number, separated_strings.number_of_strings - 1);
+    checker = check_valid_end_of_line(substring_number,
+                                      separated_strings.number_of_strings - 1);
     if (checker == NO) {
       AST->AST_type = AST_error;
       strcpy(AST->error, EXCESS_STRINGS_ERROR);
+      delete_trie(keywords);
       return AST;
     }
     AST->AST_type = AST_directive;
     AST->AST_options.directive.AST_directive_type = AST_directive_entry;
-    strcpy(AST->AST_options.directive.AST_directive_options.label, separated_strings.separated_strings[substring_number + 1]);
-    return AST;
+    strcpy(AST->AST_options.directive.AST_directive_options.label,
+           separated_strings.separated_strings[substring_number + 1]);
+    break;
   case EXTERN:
     checker = is_a_valid_label(
         separated_strings.separated_strings[substring_number + 1], keywords);
     if (checker == INVALID_LABEL) {
       AST->AST_type = AST_error;
       strcpy(AST->error, INVALID_LABEL_ERROR);
-      return AST;
+      break;
     }
-    checker = check_valid_end_of_line(substring_number, separated_strings.number_of_strings - 1);
+    checker = check_valid_end_of_line(substring_number,
+                                      separated_strings.number_of_strings - 1);
     if (checker == NO) {
       AST->AST_type = AST_error;
       strcpy(AST->error, EXCESS_STRINGS_ERROR);
-      return AST;
+      break;
     }
     AST->AST_type = AST_directive;
     AST->AST_options.directive.AST_directive_type = AST_directive_extern;
-    strcpy(AST->AST_options.directive.AST_directive_options.label, separated_strings.separated_strings[substring_number + 1]);
-    return AST;
+    strcpy(AST->AST_options.directive.AST_directive_options.label,
+           separated_strings.separated_strings[substring_number + 1]);
+    break;
   case DEFINE:
-    if (separated_strings.number_of_strings != NUMBER_OF_VALID_OPERANDS_FOR_DEFINE) {
+    if (separated_strings.number_of_strings !=
+        NUMBER_OF_VALID_OPERANDS_FOR_DEFINE) {
       AST->AST_type = AST_error;
       strcpy(AST->error, INVALID_DEFINE_ERROR);
-      return AST;
+      break;
     }
 
     substring_number++;
-    checker = is_a_valid_label(separated_strings.separated_strings[substring_number], keywords);
+    checker = is_a_valid_label(
+        separated_strings.separated_strings[substring_number], keywords);
     if (checker == INVALID_LABEL) {
       AST->AST_type = AST_error;
       strcpy(AST->error, INVALID_LABEL_ERROR);
+      delete_trie(keywords);
       return AST;
     }
-    strcpy(define_name, separated_strings.separated_strings[substring_number]);
+    strcpy(AST->AST_options.define.label, separated_strings.separated_strings[substring_number]);
+    AST->AST_options.define.label[strlen(separated_strings.separated_strings[substring_number])] = '\0';
     substring_number++;
-    if (strcmp(separated_strings.separated_strings[substring_number], "=") != 0) {
+    if (strcmp(separated_strings.separated_strings[substring_number], "=") !=
+        0) {
       AST->AST_type = AST_error;
       strcpy(AST->error, INVALID_DEFINE_ERROR);
+      delete_trie(keywords);
       return AST;
     }
     substring_number++;
 
-    temp_string = separated_strings.separated_strings[substring_number];
-    while (*temp_string != '\0') {
-      if (!isdigit(*temp_string)) {
+    strcpy(temp_string, separated_strings.separated_strings[substring_number]);
+    i = 0;
+    while (temp_string[i] != '\0' && temp_string[i] != '\n') {
+      if (!isdigit(temp_string[i])) {
         AST->AST_type = AST_error;
         strcpy(AST->error, INVALID_DEFINE_ERROR);
+      delete_trie(keywords);
         return AST;
       }
-      temp_string++;
+      i++;
     }
-    AST->AST_type = AST_directive;
-    AST->AST_options.define.number = (int)strtol(separated_strings.separated_strings[substring_number], NULL, BASE_TEN);
+    AST->AST_type = AST_define;
+    AST->AST_options.define.number = (int)strtol(
+        separated_strings.separated_strings[substring_number], NULL, BASE_TEN);
+      delete_trie(keywords);
     return AST;
   default:
     break;
@@ -204,159 +265,232 @@ assembler_AST *create_assembler_AST(char *input) {
   /* CHECKING FOR INSTRUCTIONS */
   strcpy(temp_string, separated_strings.separated_strings[substring_number]);
 
-  if (strcmp(temp_string, "mov") == 0 || strcmp(temp_string, "cmp") == 0 || 
+  if (strcmp(temp_string, "mov") == 0 || strcmp(temp_string, "cmp") == 0 ||
       strcmp(temp_string, "add") == 0 || strcmp(temp_string, "sub") == 0 ||
       strcmp(temp_string, "lea") == 0) {
 
-        /* TWO OPERAND INSTRUCTIONS */
+    /* TWO OPERAND INSTRUCTIONS */
 
-        for (i = 0, num_of_commas = 0; i < separated_strings.number_of_strings; i++) {
-          if (strcmp(separated_strings.separated_strings[i], ",") == 0) {
-            num_of_commas++;
-          }
-        }
-        if (num_of_commas == 0) {
-          AST->AST_type = AST_error;
-          strcpy(AST->error, MISSING_COMMA_ERROR);
-          return AST;
-        }
-        if (num_of_commas > 1) {
-          AST->AST_type = AST_error;
-          strcpy(AST->error, EXCESS_COMMA_ERROR);
-          return AST;
-        }
+    for (i = 0, num_of_commas = 0; i < separated_strings.number_of_strings;
+         i++) {
+      if (strcmp(separated_strings.separated_strings[i], ",") == 0) {
+        num_of_commas++;
+      }
+    }
+    if (num_of_commas == 0) {
+      AST->AST_type = AST_error;
+      strcpy(AST->error, MISSING_COMMA_ERROR);
+      delete_trie(keywords);
+      return AST;
+    }
+    if (num_of_commas > 1) {
+      AST->AST_type = AST_error;
+      strcpy(AST->error, EXCESS_COMMA_ERROR);
+      delete_trie(keywords);
+      return AST;
+    }
 
-        if (separated_strings.number_of_strings != NUMBER_OF_VALID_OPERANDS_FOR_TWO_OPERAND_INSTRUCTIONS + has_label_to_check_for_allowed_num_of_strings) {
-          AST->AST_type = AST_error;
-          strcpy(AST->error, INVALID_INSTRUCTION_ERROR);
-          return AST;
-        }
+    if (separated_strings.number_of_strings !=
+        NUMBER_OF_VALID_OPERANDS_FOR_TWO_OPERAND_INSTRUCTIONS +
+            has_label_to_check_for_allowed_num_of_strings) {
+      AST->AST_type = AST_error;
+      strcpy(AST->error, INVALID_INSTRUCTION_ERROR);
+      delete_trie(keywords);
+      return AST;
+    }
 
-        substring_number++;
+    substring_number++;
 
-        if (strcmp(temp_string, "mov") == 0)
-          opcode = AST_opcode_mov;
-        if (strcmp(temp_string, "cmp") == 0)
-          opcode = AST_opcode_cmp;
-        if (strcmp(temp_string, "add") == 0)
-          opcode = AST_opcode_add;
-        if (strcmp(temp_string, "sub") == 0)
-          opcode = AST_opcode_sub;
-        if (strcmp(temp_string, "lea") == 0)
-          opcode = AST_opcode_lea;
+    if (strcmp(temp_string, "mov") == 0)
+      opcode = AST_opcode_mov;
+    else if (strcmp(temp_string, "cmp") == 0)
+      opcode = AST_opcode_cmp;
+    else if (strcmp(temp_string, "add") == 0)
+      opcode = AST_opcode_add;
+    else if (strcmp(temp_string, "sub") == 0)
+      opcode = AST_opcode_sub;
+    else if (strcmp(temp_string, "lea") == 0)
+      opcode = AST_opcode_lea;
 
-        AST->AST_type = AST_instruction;
-          AST->AST_options.instruction.AST_instruction_option = opcode;
-          checker = parse_operand(
-              separated_strings.separated_strings[substring_number],
-              opcode, operand_source, AST, keywords);
-          if (checker == INVALID_OPERAND) {
-            AST->AST_type = AST_error;
-            strcpy(AST->error, INVALID_OPERAND_ERROR);
-          }
-          if (check_allowed_operand(checker, opcode, operand_source) == NO) {
-            AST->AST_type = AST_error;
-            strcpy(AST->error, INVALID_OPERAND_ERROR);
-          }
-          substring_number++;
-          if (strcmp(separated_strings.separated_strings[substring_number], ",") != 0) {
-            AST->AST_type = AST_error;
-            strcpy(AST->error, MISSING_COMMA_ERROR);
-            return AST;
-          }
-          substring_number++;
-          checker = parse_operand(
-              separated_strings.separated_strings[substring_number],
-              opcode, operand_destination, AST, keywords);
-          if (checker == INVALID_OPERAND) {
-            AST->AST_type = AST_error;
-            strcpy(AST->error, INVALID_OPERAND_ERROR);
-          }
-          if (check_allowed_operand(checker, opcode, operand_destination) == NO) {
-            AST->AST_type = AST_error;
-            strcpy(AST->error, INVALID_OPERAND_ERROR);
-          }
-          return AST;
-        }
+    AST->AST_type = AST_instruction;
+    AST->AST_options.instruction.AST_instruction_option = opcode;
+    checker =
+        parse_operand(separated_strings.separated_strings[substring_number],
+                      opcode, operand_source, AST, keywords);
+    if (checker == INVALID_OPERAND) {
+      AST->AST_type = AST_error;
+      strcpy(AST->error, INVALID_OPERAND_ERROR);
+    }
+    if (check_allowed_operand(checker, operand_source, opcode) == NO) {
+      AST->AST_type = AST_error;
+      strcpy(AST->error, INVALID_OPERAND_ERROR);
+    }
+    substring_number++;
+    if (strcmp(separated_strings.separated_strings[substring_number], ",") !=
+        0) {
+      AST->AST_type = AST_error;
+      strcpy(AST->error, MISSING_COMMA_ERROR);
+      delete_trie(keywords);
+      return AST;
+    }
+    substring_number++;
+    checker =
+        parse_operand(separated_strings.separated_strings[substring_number],
+                      opcode, operand_destination, AST, keywords);
+    if (checker == INVALID_OPERAND) {
+      AST->AST_type = AST_error;
+      strcpy(AST->error, INVALID_OPERAND_ERROR);
+    }
+    if (check_allowed_operand(checker, operand_destination, opcode) == NO) {
+      AST->AST_type = AST_error;
+      strcpy(AST->error, INVALID_OPERAND_ERROR);
+    }
+      delete_trie(keywords);
+    return AST;
+  }
 
-        if (strcmp(temp_string, "not") == 0 ||
-            strcmp(temp_string, "clr") == 0 ||
-            strcmp(temp_string, "inc") == 0 ||
-            strcmp(temp_string, "dec") == 0 ||
-            strcmp(temp_string, "jmp") == 0 ||
-            strcmp(temp_string, "bne") == 0 ||
-            strcmp(temp_string, "bne") == 0 ||
-            strcmp(temp_string, "red") == 0 ||
-            strcmp(temp_string, "prn") == 0 ||
-            strcmp(temp_string, "jsr") == 0) {
-
-          /* ONE OPERAND INSTRUCTIONS */
-
-          for (i = 0; i < separated_strings.number_of_strings; i++) {
-            if (strcmp(separated_strings.separated_strings[i], ",") == 0) {
-              AST->AST_type = AST_error;
-              strcpy(AST->error, EXCESS_COMMA_ERROR);
-              return AST;
-            }
-          }
-        
-          if (separated_strings.number_of_strings != NUMBER_OF_VALID_OPERANDS_FOR_ONE_OPERAND_INSTRUCTIONS + has_label_to_check_for_allowed_num_of_strings) {
-            AST->AST_type = AST_error;
-            strcpy(AST->error, INVALID_INSTRUCTION_ERROR);
-            return AST;
-          }
-
-          if (strcmp(temp_string, "not") == 0)
-            opcode = AST_opcode_not;
-          if (strcmp(temp_string, "clr") == 0)
-            opcode = AST_opcode_clr;
-          if (strcmp(temp_string, "inc") == 0)
-            opcode = AST_opcode_inc;
-          if (strcmp(temp_string, "dec") == 0)
-            opcode = AST_opcode_dec;
-          if (strcmp(temp_string, "jmp") == 0)
-            opcode = AST_opcode_jmp;
-          if (strcmp(temp_string, "bne") == 0)
-            opcode = AST_opcode_bne;
-          if (strcmp(temp_string, "red") == 0)
-            opcode = AST_opcode_red;
-          if (strcmp(temp_string, "prn") == 0)
-            opcode = AST_opcode_prn;
-          if (strcmp(temp_string, "jsr") == 0)
-            opcode = AST_opcode_jsr;
+  if (strcmp(temp_string, "not") == 0 || strcmp(temp_string, "clr") == 0 ||
+      strcmp(temp_string, "inc") == 0 || strcmp(temp_string, "dec") == 0 ||
+      strcmp(temp_string, "jmp") == 0 || strcmp(temp_string, "bne") == 0 ||
+      strcmp(temp_string, "bne") == 0 || strcmp(temp_string, "red") == 0 ||
+      strcmp(temp_string, "prn") == 0 || strcmp(temp_string, "jsr") == 0) {
 
 
+    AST->AST_options.instruction.AST_instruction_operand_type[1].AST_instruction_operand_option = not_relevant;
+
+    /* ONE OPERAND INSTRUCTIONS */
+
+    for (i = 0; i < separated_strings.number_of_strings; i++) {
+      if (strcmp(separated_strings.separated_strings[i], ",") == 0) {
+        AST->AST_type = AST_error;
+        strcpy(AST->error, EXCESS_COMMA_ERROR);
+      delete_trie(keywords);
+        return AST;
+
+      }
+    }
+
+    if (separated_strings.number_of_strings !=
+        NUMBER_OF_VALID_OPERANDS_FOR_ONE_OPERAND_INSTRUCTIONS +
+            has_label_to_check_for_allowed_num_of_strings) {
+      AST->AST_type = AST_error;
+      strcpy(AST->error, INVALID_INSTRUCTION_ERROR);
+      delete_trie(keywords);
+      return AST;
+    }
+
+    else if (strcmp(temp_string, "not") == 0)
+      opcode = AST_opcode_not;
+    else if (strcmp(temp_string, "clr") == 0)
+      opcode = AST_opcode_clr;
+    else if (strcmp(temp_string, "inc") == 0)
+      opcode = AST_opcode_inc;
+    else if (strcmp(temp_string, "dec") == 0)
+      opcode = AST_opcode_dec;
+    else if (strcmp(temp_string, "jmp") == 0)
+      opcode = AST_opcode_jmp;
+    else if (strcmp(temp_string, "bne") == 0)
+      opcode = AST_opcode_bne;
+    else if (strcmp(temp_string, "red") == 0)
+      opcode = AST_opcode_red;
+    else if (strcmp(temp_string, "prn") == 0)
+      opcode = AST_opcode_prn;
+    else if (strcmp(temp_string, "jsr") == 0)
+      opcode = AST_opcode_jsr;
+
+    AST->AST_type = AST_instruction;
+    AST->AST_options.instruction.AST_instruction_option = opcode;
+
+    substring_number++;
+
+    checker =
+        parse_operand(separated_strings.separated_strings[substring_number],
+                      opcode, operand_source, AST, keywords);
+    if (checker == INVALID_OPERAND) {
+      AST->AST_type = AST_error;
+      strcpy(AST->error, INVALID_OPERAND_ERROR);
+    }
+
+    if (check_allowed_operand(checker, operand_source, opcode) == NO) {
+      AST->AST_type = AST_error;
+      strcpy(AST->error, INVALID_OPERAND_ERROR);
+    }
+    AST->AST_options.instruction.AST_instruction_operand_type[operand_destination].AST_instruction_operand_option = AST_instruction_operand_option_label;
+    AST->AST_options.instruction.AST_instruction_operand_type[operand_source].AST_instruction_operand_option = not_relevant;
+    strcpy(AST->AST_options.instruction.AST_instruction_operand_type[operand_destination].AST_instruction_operand_type.label, separated_strings.separated_strings[substring_number]);
+    AST->AST_options.instruction.AST_instruction_operand_type[operand_destination].AST_instruction_operand_type.label[strlen(separated_strings.separated_strings[substring_number])] = '\0';
+      delete_trie(keywords);
+    return AST;
+  }
+
+  /* NO OPERAND INSTRUCTIONS */
+
+  if (strcmp(temp_string, "rts") == 0 || strcmp(temp_string, "hlt") == 0) {
 
 
+    AST->AST_options.instruction.AST_instruction_operand_type[0].AST_instruction_operand_option = not_relevant;
+    AST->AST_options.instruction.AST_instruction_operand_type[1].AST_instruction_operand_option = not_relevant;
 
 
-
-
-
-        }
+    if (separated_strings.number_of_strings !=
+        NUMBER_OF_VALID_OPERANDS_FOR_NO_OPERAND_INSTRUCTIONS +
+            has_label_to_check_for_allowed_num_of_strings) {
+      AST->AST_type = AST_error;
+      strcpy(AST->error, INVALID_INSTRUCTION_ERROR);
+      delete_trie(keywords);
+      return AST;
+    }
+    if (strcmp(temp_string, "rts") == 0)
+      opcode = AST_opcode_rts;
+    if (strcmp(temp_string, "hlt") == 0)
+      opcode = AST_opcode_hlt;
+    AST->AST_type = AST_instruction;
+    AST->AST_options.instruction.AST_instruction_option = opcode;
+      delete_trie(keywords);
+    return AST;
+  } else {
+    AST->AST_type = AST_error;
+    strcpy(AST->error, INVALID_INSTRUCTION_ERROR);
+      delete_trie(keywords);
+    return AST;
+  }
 }
-
-
 
 int is_a_valid_number(char *input, int lower_bound, int upper_bound,
                       int *result) {
   int input_length;
+  long parsed_number_temp;
   int parsed_number;
+  int is_negative;
+
 
   if (*input == 'r')
     input++;
 
   input_length = strlen(input);
-  parsed_number = strtol(input, &input, BASE_TEN);
-  if (input_length != check_number_of_digits(parsed_number)) {
+  if (*input == '-') {
+    input++;
+    input_length--;
+    is_negative = YES;
+  } else {
+    is_negative = NO;
+  }
+
+  parsed_number_temp = strtol(input, &input, BASE_TEN);
+  if (input_length != check_number_of_digits(parsed_number_temp)) {
     return INVALID_NUMBER;
   }
 
-  if (parsed_number < lower_bound || parsed_number > upper_bound) {
+  if (parsed_number_temp < lower_bound || parsed_number_temp > upper_bound) {
     return INVALID_NUMBER;
   }
+  parsed_number = (int)parsed_number_temp;
 
-  *result = (int)parsed_number;
+  if (is_negative == YES) {
+    parsed_number *= -1;
+  }
+
+  *result = parsed_number;
   return VALID_NUMBER;
 }
 
@@ -410,7 +544,7 @@ void create_keywords(TrieNode *keywords) {
 
 int parse_operand(char *input, int instruction, int source_destination,
                   assembler_AST *AST, TrieNode *keywords) {
-  int *operand;
+  int operand;
   int check;
   int label_name_length;
   char *temp;
@@ -422,48 +556,68 @@ int parse_operand(char *input, int instruction, int source_destination,
     char label[MAX_LABEL_LENGTH];
   };
 
-  operand = NULL;
-
   /* CHECK IF CONSTANT */
   if (*input == '#') {
     input++;
-    check = is_a_valid_number(input, INT_MIN, INT_MAX, operand);
-    switch (check) {
-    case VALID_NUMBER:
-      AST->AST_options.instruction
-          .AST_instruction_operand_type[source_destination]
-          .AST_instruction_operand_type.index.index_type.constant = *operand;
-      AST->AST_options.instruction
-          .AST_instruction_operand_type[source_destination]
-          .AST_instruction_operand_option =
-          AST_instruction_operand_option_constant;
-      return CONSTANT;
-    case INVALID_NUMBER:
-      AST->AST_type = AST_error;
-      strcpy(AST->error, INVALID_NUMBER_ERROR);
-      return INVALID_OPERAND;
-    case VALID_NUMBER_TOO_BIG_OR_TOO_SMALL:
-      AST->AST_type = AST_error;
-      strcpy(AST->error, NUMBER_OUT_OF_BOUNDS_ERROR);
-      return INVALID_OPERAND;
-    default:
-      break;
+    if (!isdigit(*input) && *input != '-' && *input != '+') {
+      strcpy(temp_label, input);
+      check = is_a_valid_label(temp_label, keywords);
+      switch (check) {
+      case VALID_LABEL:
+        AST->AST_options.instruction
+            .AST_instruction_operand_type[source_destination]
+            .AST_instruction_operand_option =
+            AST_instruction_operand_option_label;
+        strcpy(AST->AST_options.instruction
+                   .AST_instruction_operand_type[source_destination]
+                   .AST_instruction_operand_type.label,
+               input);
+        return LABEL;
+      case INVALID_LABEL:
+        AST->AST_type = AST_error;
+        strcpy(AST->error, INVALID_LABEL_ERROR);
+        return INVALID_OPERAND;
+      }
+    } else {
+
+      check = is_a_valid_number(input, INT_MIN, INT_MAX, &operand);
+      switch (check) {
+      case VALID_NUMBER:
+        AST->AST_options.instruction
+            .AST_instruction_operand_type[source_destination]
+            .AST_instruction_operand_type.constant = operand;
+        AST->AST_options.instruction
+            .AST_instruction_operand_type[source_destination]
+            .AST_instruction_operand_option =
+            AST_instruction_operand_option_constant;
+        return CONSTANT;
+      case INVALID_NUMBER:
+        AST->AST_type = AST_error;
+        strcpy(AST->error, INVALID_NUMBER_ERROR);
+        return INVALID_OPERAND;
+      case VALID_NUMBER_TOO_BIG_OR_TOO_SMALL:
+        AST->AST_type = AST_error;
+        strcpy(AST->error, NUMBER_OUT_OF_BOUNDS_ERROR);
+        return INVALID_OPERAND;
+      default:
+        break;
+      }
     }
   }
 
   /* CHECK IF REGISTER */
   if (*input == 'r' && isdigit(*(input + 1))) {
     input++;
-    check = is_a_valid_number(input, BOTTOM_REGISTER, TOP_REGISTER, operand);
+    check = is_a_valid_number(input, BOTTOM_REGISTER, TOP_REGISTER, &operand);
     switch (check) {
     case VALID_NUMBER:
       AST->AST_options.instruction
           .AST_instruction_operand_type[source_destination]
-          .AST_instruction_operand_type.register_number = *operand;
+          .AST_instruction_operand_type.register_number = operand;
       AST->AST_options.instruction
           .AST_instruction_operand_type[source_destination]
           .AST_instruction_operand_option =
-          AST_instruction_operand_option_index_register;
+          AST_instruction_operand_option_register;
       return REGISTER;
     case INVALID_NUMBER:
     case VALID_NUMBER_TOO_BIG_OR_TOO_SMALL:
@@ -501,9 +655,9 @@ int parse_operand(char *input, int instruction, int source_destination,
     }
 
   } else {
-    temp--;
     label_name_length = temp - input;
     strncpy(label, input, label_name_length);
+    label[label_name_length] = '\0';
     check = is_a_valid_label(label, keywords);
     switch (check) {
     case VALID_LABEL:
@@ -511,16 +665,18 @@ int parse_operand(char *input, int instruction, int source_destination,
                  .AST_instruction_operand_type[source_destination]
                  .AST_instruction_operand_type.index.label,
              label);
-      first_letter_of_index = temp + 2;
+             AST->AST_options.instruction.AST_instruction_operand_type[source_destination].AST_instruction_operand_option = AST_instruction_operand_option_index;
+             AST->AST_options.instruction.AST_instruction_operand_type[source_destination].AST_instruction_operand_type.index.label[label_name_length] = '\0';
+      first_letter_of_index = temp + 1;
       temp = strchr(temp, ']');
       if (temp == NULL) {
         AST->AST_type = AST_error;
         strcpy(AST->error, INVALID_INDEX_ERROR);
         return INVALID_OPERAND;
       }
-      temp--;
       label_name_length = temp - first_letter_of_index;
       strncpy(temp_label, first_letter_of_index, label_name_length);
+      temp_label[label_name_length] = '\0';
       check = does_label_have_only_digits(temp_label);
       switch (check) {
       case YES:
@@ -532,19 +688,30 @@ int parse_operand(char *input, int instruction, int source_destination,
             .AST_instruction_operand_type[source_destination]
             .AST_instruction_operand_option =
             AST_instruction_operand_option_index_constant;
+        AST->AST_options.instruction.AST_instruction_operand_type[source_destination].AST_instruction_operand_option = AST_instruction_operand_option_index;
+        AST->AST_options.instruction.AST_instruction_operand_type[source_destination].AST_instruction_operand_type.index.AST_instruction_operand_option_index_option = AST_instruction_operand_option_index_constant;
+        return INDEX;
         break;
       case NO:
         check = is_a_valid_label(temp_label, keywords);
         switch (check) {
         case VALID_LABEL:
+        label_name_length = strlen(temp_label);
           strcpy(AST->AST_options.instruction
                      .AST_instruction_operand_type[source_destination]
                      .AST_instruction_operand_type.index.index_type.label,
                  temp_label);
+                 AST->AST_options.instruction.AST_instruction_operand_type[source_destination].AST_instruction_operand_type.index.index_type.label[label_name_length] = '\0';
           AST->AST_options.instruction
               .AST_instruction_operand_type[source_destination]
               .AST_instruction_operand_option =
+              AST_instruction_operand_option_index;
+          AST->AST_options.instruction
+              .AST_instruction_operand_type[source_destination]
+              .AST_instruction_operand_type.index
+              .AST_instruction_operand_option_index_option =
               AST_instruction_operand_option_index_label;
+
           return INDEX;
         case INVALID_LABEL:
           AST->AST_type = AST_error;
@@ -572,63 +739,65 @@ int does_label_have_only_digits(char *input) {
   return YES;
 }
 
-
 separated_strings_from_input_line separate_input_line(char *input) {
-    int number_of_strings;
-    int was_separated_successfully;
-    separated_strings_from_input_line separated_strings = {0};
-    char *temp;
+  int number_of_strings;
+  int was_separated_successfully;
+  separated_strings_from_input_line separated_strings = {0};
+  char *temp;
 
-    was_separated_successfully = remove_spaces_within_brackets(input, input);
-    if (was_separated_successfully == NO) {
-        separated_strings.error = YES;
-        return separated_strings;
-    }
-
-    separated_strings.error = NO;
-
-    while (isspace(*input)) {
-        input++;
-    }
-
-    if (*input == '\0') {
-        return separated_strings;
-    }
-
-    number_of_strings = 0;
-
-    do {
-            separated_strings.separated_strings[number_of_strings++] = input;
-        temp = strpbrk(input, BREAKERS);
-
-        if (temp && *temp != ',') {
-            *temp = '\0';
-            temp++;
-            while (isspace(*temp))
-                temp++;
-            if (*temp == '\0') {
-                break;
-            }
-            input = temp;
-        } else if (temp && *temp == ',') {
-            *temp = '\0';
-            separated_strings.separated_strings[number_of_strings++] = ",";
-            temp++;
-            while (isspace(*temp))
-                temp++;
-            if (*temp == '\0') {
-                break;
-            }
-            input = temp;
-        } else {
-            break;
-        }
-    } while (FOREVER);
-
-    separated_strings.number_of_strings = number_of_strings;
+  was_separated_successfully = remove_spaces_within_brackets(input, input);
+  if (was_separated_successfully == NO) {
+    separated_strings.error = YES;
     return separated_strings;
+  }
+
+  separated_strings.error = NO;
+
+  while (isspace(*input)) {
+    input++;
+  }
+
+  if (*input == '\0') {
+    return separated_strings;
+  }
+
+  number_of_strings = 0;
+
+  do {
+    separated_strings.separated_strings[number_of_strings++] = input;
+    temp = strpbrk(input, BREAKERS);
+
+    if (temp && *temp != ',') {
+      *temp = '\0';
+      temp++;
+      while (isspace(*temp))
+        temp++;
+      if (*temp == '\0') {
+        break;
+      }
+      input = temp;
+    } else if (temp && *temp == ',') {
+      *temp = '\0';
+      separated_strings.separated_strings[number_of_strings++] = ",";
+      temp++;
+      while (isspace(*temp))
+        temp++;
+      if (*temp == '\0') {
+        break;
+      }
+      input = temp;
+    } else {
+      break;
+    }
+  } while (FOREVER);
+
+  if (number_of_strings > 0 && separated_strings.separated_strings[number_of_strings - 1][strlen(separated_strings.separated_strings[number_of_strings - 1]) - 1] == '\n') {
+  separated_strings.separated_strings[number_of_strings - 1][strlen(separated_strings.separated_strings[number_of_strings - 1]) - 1] = '\0';
 }
 
+  separated_strings.number_of_strings = number_of_strings;
+  return separated_strings;
+}
 
 int remove_spaces_within_brackets(char *input, char *output) {
   char *temp;
@@ -697,16 +866,16 @@ int parse_directive(char *input) {
   if (strcmp(input, ".data") == 0)
     return DATA;
 
- if (strcmp(input, ".string") == 0)
+  if (strcmp(input, ".string") == 0)
     return STRING;
 
- if (strcmp(input, ".entry") == 0)
+  if (strcmp(input, ".entry") == 0)
     return ENTRY;
 
- if (strcmp(input, ".extern") == 0)
+  if (strcmp(input, ".extern") == 0)
     return EXTERN;
 
- if (strcmp(input, ".define") == 0)
+  if (strcmp(input, ".define") == 0)
     return DEFINE;
 
   return INVALID_DIRECTIVE;
@@ -719,8 +888,10 @@ int check_valid_end_of_line(int number_of_strings, int substring_number) {
   return YES;
 }
 
+int check_allowed_operand(int operand_code, int source_destination,
+                          int instruction_opcode) {
+  char operand;
 
-int check_allowed_operand(int operand_code, int source_destination, int instruction_opcode) {
   struct allowed_operands_for_instructions {
     char *instruction_name;
     int instruction_opcode;
@@ -737,27 +908,31 @@ int check_allowed_operand(int operand_code, int source_destination, int instruct
           {"not", AST_opcode_not, "", "123"},
           {"clr", AST_opcode_clr, "", "123"},
           {"lea", AST_opcode_lea, "12", "123"},
-          {"inc", AST_opcode_inc, "", "123"},
-          {"dec", AST_opcode_dec, "", "123"},
-          {"jmp", AST_opcode_jmp, "", "13"},
-          {"bne", AST_opcode_bne, "", "13"},
-          {"red", AST_opcode_red, "", "123"},
-          {"prn", AST_opcode_prn, "", "0123"},
-          {"jsr", AST_opcode_jsr, "", "13"},
+          {"inc", AST_opcode_inc, "123", ""},
+          {"dec", AST_opcode_dec, "123", ""},
+          {"jmp", AST_opcode_jmp, "13", ""},
+          {"bne", AST_opcode_bne, "13", ""},
+          {"red", AST_opcode_red, "123", ""},
+          {"prn", AST_opcode_prn, "0123", ""},
+          {"jsr", AST_opcode_jsr, "13", ""},
           {"rts", AST_opcode_rts, "", ""},
           {"hlt", AST_opcode_hlt, "", ""},
       };
 
+  operand = operand_code + '0';
+
   if (source_destination == operand_source) {
-    if (strchr(instuction_operand_table[instruction_opcode].allowed_source, operand_code) == NULL) {
+    if (strchr(instuction_operand_table[instruction_opcode].allowed_source,
+               operand) == NULL) {
       return NO;
     } else {
       return YES;
-    }
+    } 
   }
 
   if (source_destination == operand_destination) {
-    if (strchr(instuction_operand_table[instruction_opcode].allowed_destination, operand_code) == NULL) {
+    if (strchr(instuction_operand_table[instruction_opcode].allowed_destination,
+               operand) == NULL) {
       return NO;
     } else {
       return YES;

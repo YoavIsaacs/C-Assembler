@@ -25,6 +25,9 @@
 #define NUMBER_OF_VALID_OPERANDS_FOR_DEFINE 4
 #define NUMBER_OF_VALID_OPERANDS_FOR_TWO_OPERAND_INSTRUCTIONS 4
 #define NUMBER_OF_VALID_OPERANDS_FOR_ONE_OPERAND_INSTRUCTIONS 2
+#define NUMBER_OF_VALID_OPERANDS_FOR_NO_OPERAND_INSTRUCTIONS 1
+#define HASH_TABLE_INITIAL_CAPACITY 256
+#define MAX_ENTRIES 3996
 
 /* SYNTAX ERRORS */
 
@@ -48,6 +51,7 @@
 #define INVALID_DEFINE_ERROR "Error, invalid number of operands for .define.\n"
 #define INVALID_INSTRUCTION_ERROR "Error, invalid number of operands for instruction.\n"
 #define INVALID_OPERAND_ERROR "Error, invalid operand.\n"
+#define HASH_TABLE_INPUT_ERROR "Error while inputting to hash table.\n"
 
 /* ENUMS */
 enum BOOL {
@@ -88,6 +92,7 @@ typedef struct TrieNode {
 
 
 
+
 /* MACRO */
 /**
  * @brief The macro structure
@@ -119,22 +124,6 @@ typedef struct list {
   Node *head;
 } List;
 
-
-
-
-/* HASH TABLE */
-
-typedef struct Entry {
-    char* key;
-    void* value;
-    struct Entry* next;
-} Entry;
-
-typedef struct HashTable {
-    Entry** entries;
-} HashTable;
-
-HashTable* create_table();
 
 
 
@@ -201,11 +190,11 @@ enum {
 };
 
 enum {
-  INVALID_OPERAND,
   CONSTANT,
-  REGISTER,
   LABEL,
-  INDEX
+  INDEX,
+  REGISTER,
+  INVALID_OPERAND
 };
 
 enum { 
@@ -238,9 +227,9 @@ typedef struct assembler_AST {
         AST_instruction_cmp,
         AST_instruction_add,
         AST_instruction_sub,
+        AST_instruction_lea,
         AST_instruction_not,
         AST_instruction_clr,
-        AST_instruction_lea,
         AST_instruction_ind,
         AST_instruction_dec,
         AST_instruction_jmp,
@@ -256,20 +245,24 @@ typedef struct assembler_AST {
         enum {
           AST_instruction_operand_option_constant,
           AST_instruction_operand_option_label,
-          AST_instruction_operand_option_index_constant,
-          AST_instruction_operand_option_index_label,
-          AST_instruction_operand_option_index_register
-        }AST_instruction_operand_option;
+          AST_instruction_operand_option_index,
+          AST_instruction_operand_option_register,
+          not_relevant
+        } AST_instruction_operand_option;
         union {
           int constant;
           char label[MAX_LABEL_LENGTH];
           int register_number;
           struct {
             char label[MAX_LABEL_LENGTH];
-            union {
+            enum {
+              AST_instruction_operand_option_index_label,
+              AST_instruction_operand_option_index_constant
+            }AST_instruction_operand_option_index_option;
+             union {
               int constant;
               char label[MAX_LABEL_LENGTH];
-            }index_type;
+            } index_type;
           }index;
         }AST_instruction_operand_type;
       }AST_instruction_operand_type[NUMBER_OF_OPERANDS];
@@ -284,6 +277,7 @@ typedef struct assembler_AST {
         AST_directive_entry,
         AST_directive_extern
       } AST_directive_type;
+      int num_of_data_entries;
 
       union {
         struct {
@@ -294,8 +288,8 @@ typedef struct assembler_AST {
           union {
             char label[MAX_LABEL_LENGTH];
             int constant;
-          } AST_directive_data_type[MAX_DATA_SIZE];
-        } AST_directive_data;
+          } AST_directive_data_type;
+        } AST_directive_data[MAX_DATA_SIZE];
         char string[MAX_LABEL_LENGTH];
         char label[MAX_LABEL_LENGTH];
       } AST_directive_options;
@@ -310,6 +304,63 @@ typedef struct assembler_AST {
 
 
 
+
+
+
+
+
+/* MIDDLE */
+
+
+typedef struct symbol {
+  char name[MAX_LABEL_LENGTH];
+
+  enum {
+    symbol_table_type_extern,
+    symbol_table_type_entry,
+    symbol_table_type_code,
+    symbol_table_type_data,
+    symbol_table_type_entry_code,
+    symbol_table_type_entry_data,
+    symbol_table_type_define
+  } type;
+
+  int data;
+  int address;
+  int line_number;
+
+}symbol;
+
+
+
+typedef struct symbol_entry_node {
+  struct symbol_entry_node *next[POSSIBLE_CHARACTERS];
+  int is_symbol;
+  symbol *symbol_data;
+} symbol_entry_node;
+
+
+
+
+typedef struct external_table {
+  char name[MAX_LABEL_LENGTH];
+  int *addresses;
+  int number_of_addresses;
+} external_table;
+
+
+typedef struct translation_unit {
+  int *code_image;
+  int IC;
+  int *data_image;
+  int DC;
+  symbol_entry_node *symbol_table;
+  int number_of_symbols;
+  external_table *external_table;
+  int number_of_externals;
+  symbol *entries[MAX_ENTRIES];
+  int number_of_entries;
+} translation_unit;
 
 
 

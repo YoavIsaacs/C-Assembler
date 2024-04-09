@@ -56,6 +56,7 @@ char *preprocessor(char *inputFileName) {
   emptyMacro(currentMacro);
 
   inMacro = NO;
+  fflush(stdout);
 
   while (fgets(temp, MAX_LINE_LENGTH, originalFile) != NULL) {
     line = malloc(strlen(temp) + 1);
@@ -99,6 +100,7 @@ char *preprocessor(char *inputFileName) {
         currentMacro->numOfLines++;
       } else {
         fprintf(outputFile, "%s", line);
+        fflush(outputFile);
       }
       break;
     case start:
@@ -110,6 +112,7 @@ char *preprocessor(char *inputFileName) {
         printf("Error: Memory allocation failed\n");
         exit(1);
       }
+      currentMacro->name[macroNameLength] = '\0';
       if (search_trie(macroNames, line)) {
         currentMacro->error = YES;
         break;
@@ -166,9 +169,11 @@ char *preprocessor(char *inputFileName) {
         exit(1);
       }
       strncpy(macroName, line, macroNameLength);
+      macroName[macroNameLength] = '\0';
       currentMacro = get_from_list(macros, macroName);
       for (i = 0; i < currentMacro->numOfLines; i++) {
         fprintf(outputFile, "%s", currentMacro->lines[i]);
+        fflush(outputFile);
       }
 
       break;
@@ -204,6 +209,8 @@ int checkLine(char *line, TrieNode *trie) {
     exit(1);
   }
 
+  currentWord[i] = '\0';
+
   strncpy(currentWord, line, i);
 
   if (strcmp(currentWord, "mcr") == 0) {
@@ -233,6 +240,11 @@ void skipSpaces(char **line) {
 int findWordLength(char *line) {
   int length = 0;
   char *currentChar = line;
+
+  if (*currentChar == '.') {
+    currentChar++;
+    length++;
+  }
   while (*currentChar != '\0' && *currentChar != ' ' && *currentChar != '\t' &&
          *currentChar != ',' && *currentChar != '.' && *currentChar != '\n') {
     length++;

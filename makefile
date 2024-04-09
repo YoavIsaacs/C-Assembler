@@ -14,7 +14,7 @@ endif
 
 all: build_env $(PROG_NAME) 
 
-$(PROG_NAME): test.o trie.o linkedList.o macro.o preprocessor.o assemblerAST.o
+$(PROG_NAME): test.o trie.o linkedList.o macro.o preprocessor.o assemblerAST.o hashTable.o firstPass.o
 	$(CC) $(CFLAGS) $(OBJ_DIR)/*.o -o $(BIN_DIR)/$@ $(LDFLAGS)
 
 test.o: test.c Preprocessor/preprocessor.h \
@@ -32,6 +32,9 @@ linkedList.o: DataStructures/linkedList.c DataStructures/linkedList.h \
 macro.o: DataStructures/macro.c DataStructures/macro.h \
  DataStructures/../global/definitions.h
 
+hashTable.o: DataStructures/hashTable.c DataStructures/hashTable.h \
+ DataStructures/../global/definitions.h
+
 preprocessor.o: Preprocessor/preprocessor.c Preprocessor/preprocessor.h \
  Preprocessor/../DataStructures/macro.h \
  Preprocessor/../DataStructures/../global/definitions.h \
@@ -45,6 +48,18 @@ assemblerAST.o: Frontend/assemblerAST.c Frontend/assemblerAST.h \
  Frontend/../Preprocessor/../DataStructures/../global/definitions.h \
  Frontend/../Preprocessor/../DataStructures/linkedList.h \
  Frontend/../Preprocessor/../DataStructures/trie.h
+
+
+firstPass.o: Middle/firstPass.c Middle/firstPass.h \
+ Middle/../global/definitions.h Middle/../FrontEnd/assemblerAST.h \
+ Middle/../FrontEnd/../global/definitions.h \
+ Middle/../FrontEnd/../Preprocessor/preprocessor.h \
+ Middle/../FrontEnd/../Preprocessor/../DataStructures/macro.h \
+ Middle/../FrontEnd/../Preprocessor/../DataStructures/../global/definitions.h \
+ Middle/../FrontEnd/../Preprocessor/../DataStructures/linkedList.h \
+ Middle/../FrontEnd/../Preprocessor/../DataStructures/trie.h \
+ Middle/../DataStructures/hashTable.h \
+ Middle/../DataStructures/../global/definitions.h
 
 %.o:
 	$(CC) $(CFLAGS) -c $< -o $(OBJ_DIR)/$@

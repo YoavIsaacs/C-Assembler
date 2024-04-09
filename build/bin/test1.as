@@ -1,36 +1,20 @@
+; file ps.as
+.entry LIST
+.extern W
 .define sz = 2
 MAIN: mov r3, LIST[sz]
-LOOP: jmp L1
-mcr m_mcr ghfsdkjlh
-cmp r3, #sz
-bne END
-endmcr
-mcr poopoo
-po0o
-poopoopoopoopoop
-fjkel
-
-
-
-
-
-
-
-
-
-
-
-endmcr
+LOOP: jmp W
 prn #-5
 mov STR[5], STR[2]
 sub r1, r4
-m_mcr
-poopoo
-L1: inc K
+cmp K, #sz
+bne W
+L1: inc L3
+.entry LOOP
 bne LOOP
-poopoo
 END: hlt
 .define len = 4
-STR: .string “abcdef”
+STR: .string "abcdef"
 LIST: .data 6, -9, len
 K: .data 22
+.extern L3
