@@ -7,14 +7,14 @@ OBJ_DIR		= $(BUILD_DIR)/obj
 BIN_DIR		= $(BUILD_DIR)/bin
 ZIP_NAME	= Maman14.zip
 ifdef DEBUG
-CFLAGS += -g -fsanitize=address
+CFLAGS += -g 
 endif
 
 .PHONY: clean build_env all
 
 all: build_env $(PROG_NAME) 
 
-$(PROG_NAME): test.o trie.o linkedList.o macro.o preprocessor.o assemblerAST.o hashTable.o firstPass.o
+$(PROG_NAME): test.o trie.o linkedList.o macro.o preprocessor.o assemblerAST.o firstPass.o symbolTableTrie.o
 	$(CC) $(CFLAGS) $(OBJ_DIR)/*.o -o $(BIN_DIR)/$@ $(LDFLAGS)
 
 test.o: test.c Preprocessor/preprocessor.h \
@@ -22,6 +22,9 @@ test.o: test.c Preprocessor/preprocessor.h \
  Preprocessor/../DataStructures/../global/definitions.h \
  Preprocessor/../DataStructures/linkedList.h \
  Preprocessor/../DataStructures/trie.h
+
+symbolTableTrie.o: DataStructures/symbolTableTrie.c \
+ DataStructures/../global/definitions.h DataStructures/symbolTableTrie.h
 
 trie.o: DataStructures/trie.c DataStructures/trie.h \
  DataStructures/../global/definitions.h
@@ -32,8 +35,6 @@ linkedList.o: DataStructures/linkedList.c DataStructures/linkedList.h \
 macro.o: DataStructures/macro.c DataStructures/macro.h \
  DataStructures/../global/definitions.h
 
-hashTable.o: DataStructures/hashTable.c DataStructures/hashTable.h \
- DataStructures/../global/definitions.h
 
 preprocessor.o: Preprocessor/preprocessor.c Preprocessor/preprocessor.h \
  Preprocessor/../DataStructures/macro.h \
@@ -49,7 +50,6 @@ assemblerAST.o: Frontend/assemblerAST.c Frontend/assemblerAST.h \
  Frontend/../Preprocessor/../DataStructures/linkedList.h \
  Frontend/../Preprocessor/../DataStructures/trie.h
 
-
 firstPass.o: Middle/firstPass.c Middle/firstPass.h \
  Middle/../global/definitions.h Middle/../FrontEnd/assemblerAST.h \
  Middle/../FrontEnd/../global/definitions.h \
@@ -58,7 +58,7 @@ firstPass.o: Middle/firstPass.c Middle/firstPass.h \
  Middle/../FrontEnd/../Preprocessor/../DataStructures/../global/definitions.h \
  Middle/../FrontEnd/../Preprocessor/../DataStructures/linkedList.h \
  Middle/../FrontEnd/../Preprocessor/../DataStructures/trie.h \
- Middle/../DataStructures/hashTable.h \
+ Middle/../DataStructures/symbolTableTrie.h \
  Middle/../DataStructures/../global/definitions.h
 
 %.o:

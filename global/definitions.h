@@ -290,7 +290,7 @@ typedef struct assembler_AST {
             int constant;
           } AST_directive_data_type;
         } AST_directive_data[MAX_DATA_SIZE];
-        char string[MAX_LABEL_LENGTH];
+        int string[MAX_LABEL_LENGTH];
         char label[MAX_LABEL_LENGTH];
       } AST_directive_options;
     } directive;
@@ -322,7 +322,8 @@ typedef struct symbol {
     symbol_table_type_data,
     symbol_table_type_entry_code,
     symbol_table_type_entry_data,
-    symbol_table_type_define
+    symbol_table_type_define,
+    symbol_table_type_defined
   } type;
 
   int data;

@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "DataStructures/hashTable.h"
 #include "Preprocessor/preprocessor.h"
 #include "global/definitions.h"
 #include "Middle/firstPass.h"
@@ -11,7 +10,7 @@ int main(int argc, char *argv[]) {
   int check;
   FILE *am_file;
   char *filename;
-  hashTable *symbol_table;
+  translation_unit *tr;
 
   filename = (char *)malloc(strlen(argv[1]) + 5 + 11);
   if (filename == NULL) {
@@ -30,8 +29,12 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
 
-  symbol_table = create_hash_table();
-  check = firstPass(symbol_table, filename, am_file);
+  tr = (translation_unit*)malloc(sizeof(translation_unit));
+  if (tr == NULL) {
+    printf("%s", MEMORY_ALLOCATION_ERROR);
+    exit(1);
+  }
+  check = first_pass(tr, filename, am_file);
 
   if (check == YES) {
     printf("First pass completed successfully\n");

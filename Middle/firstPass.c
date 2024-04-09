@@ -29,11 +29,11 @@ int first_pass(translation_unit *tr, const char *file_name, FILE *am_file) {
 
     if (ast->label[0] != '\0' &&
         (ast->AST_type == AST_instruction ||
-         ast->AST_type == AST_directive &&
+         (ast->AST_type == AST_directive &&
              (ast->AST_options.directive.AST_directive_type ==
                   AST_directive_data ||
               ast->AST_options.directive.AST_directive_type ==
-                  AST_directive_string))) {
+                  AST_directive_string)))) {
 
       temp_symbol = search_symbol_table(tr->symbol_table, ast->label);
       if (temp_symbol) { /* SYMBOL IS IN THE TABLE */
@@ -64,6 +64,7 @@ int first_pass(translation_unit *tr, const char *file_name, FILE *am_file) {
           temp_symbol->type = symbol_table_type_data;
           temp_symbol->address = DC;
         }
+        insert_to_symbol_table(tr->symbol_table, temp_symbol);
         tr->number_of_symbols++;
       }
     }
@@ -78,7 +79,7 @@ int first_pass(translation_unit *tr, const char *file_name, FILE *am_file) {
               AST_instruction_operand_option_register) {
         IC++;
       } else {
-        if (ast->AST_type <= AST_instruction_lea) {
+        if ((int)ast->AST_type <= AST_instruction_lea) {
           switch (ast->AST_options.instruction.AST_instruction_operand_type[0]
                       .AST_instruction_operand_option) {
           case AST_instruction_operand_option_constant:
@@ -115,23 +116,51 @@ int first_pass(translation_unit *tr, const char *file_name, FILE *am_file) {
           }
         }
       }
-    } else if ((ast->AST_type =AST_directive && (ast->AST_options.directive.AST_directive_type == AST_directive_data ||
+    } else if ((ast->AST_type == AST_directive && (ast->AST_options.directive.AST_directive_type == AST_directive_data ||
                                               ast->AST_options.directive.AST_directive_type == AST_directive_string))) {
       if (tr->data_image == NULL) {
-        *(tr->data_image) = *(int*)malloc(sizeof(int) * ast->AST_options.directive.num_of_data_entries);
+        (tr->data_image) = (int*)malloc(sizeof(int) * ast->AST_options.directive.num_of_data_entries + 1);
         if (tr->data_image == NULL) {
           printf("%s", MEMORY_ALLOCATION_ERROR);
           exit(1);
         }
       } else {
-        tr->data_image = (int*)realloc(tr->data_image, sizeof(int) * (DC + ast->AST_options.directive.num_of_data_entries));
+        tr->data_image = (int*)realloc(tr->data_image, sizeof(int) * (DC + ast->AST_options.directive.num_of_data_entries + 1));
         if (tr->data_image == NULL) {
           printf("%s", MEMORY_ALLOCATION_ERROR);
           exit(1);
         }
       }
+      if (ast->AST_options.directive.AST_directive_type == AST_directive_string) {
+        memcpy(
+            tr->data_image + DC,
+            ast->AST_options.directive.AST_directive_options.string,
+            sizeof(int) * ast->AST_options.directive.num_of_data_entries);
+        *(tr->data_image + DC + 1) = '0';
+        DC++;
+      } else if (ast->AST_options.directive.AST_directive_type == AST_directive_data) {
+        for (i = 0; i < ast->AST_options.directive.num_of_data_entries; i ++) {
+          if (ast->AST_options.directive.AST_directive_options.AST_directive_data[i].AST_directive_data_options == AST_directive_data_label) {
+            temp_symbol = search_symbol_table(tr->symbol_table, ast->AST_options.directive.AST_directive_options.AST_directive_data[i].AST_directive_data_type.label);
+            if (temp_symbol) {
+              tr->data_image[DC + i] = temp_symbol->data;
+            } else {
+              temp_symbol = (symbol*)malloc(sizeof(symbol));
+              if (temp_symbol == NULL) {
+                printf("%s", MEMORY_ALLOCATION_ERROR);
+                exit(1);
+              }
+              strcpy(temp_symbol->name, ast->AST_options.directive.AST_directive_options.AST_directive_data[i].AST_directive_data_type.label);
+              temp_symbol->type = symbol_table_type_data;
+              temp_symbol->data = DC + i;
+              insert_to_symbol_table(tr->symbol_table, temp_symbol);
+            }
+          } else {
+          tr->data_image[DC + i] = ast->AST_options.directive.AST_directive_options.AST_directive_data[i].AST_directive_data_type.constant;
+        } 
 
-      memcpy(tr->data_image + DC, ast->AST_options.directive.AST_directive_options.AST_directive_data, sizeof(int) * ast->AST_options.directive.num_of_data_entries);
+        }
+      }
       DC += ast->AST_options.directive.num_of_data_entries;
       tr->DC = DC;
 
@@ -162,13 +191,33 @@ int first_pass(translation_unit *tr, const char *file_name, FILE *am_file) {
           temp_symbol->type = symbol_table_type_data;
           temp_symbol->address = DC;
         }
+        insert_to_symbol_table(tr->symbol_table, temp_symbol);
         tr->number_of_symbols++;
       } else {
         printf("Error: redifinition of symbol %s in file %s line %d\n",
                ast->label, file_name, line_number);
         has_error = YES;
       }
+    } else if (ast->AST_type == AST_define) {
+      temp_symbol = search_symbol_table(tr->symbol_table, ast->AST_options.define.label);
+      if (temp_symbol) {
+        printf("Error: redifinition of symbol %s in file %s line %d\n",
+               ast->AST_options.define.label, file_name, line_number);
+        has_error = YES;
+      } else {
+        temp_symbol = (symbol*)malloc(sizeof(symbol));
+        if (temp_symbol == NULL) {
+          printf("%s", MEMORY_ALLOCATION_ERROR);
+          exit(1);
+        }
+        strcpy(temp_symbol->name, ast->AST_options.define.label);
+        temp_symbol->type = symbol_table_type_data;
+        temp_symbol->data = ast->AST_options.define.number;
+        insert_to_symbol_table(tr->symbol_table, temp_symbol);
+        tr->number_of_symbols++;
+      }
     }
+    free(ast);
     line_number++;
   }
 

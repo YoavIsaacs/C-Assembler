@@ -141,7 +141,6 @@ assembler_AST *create_assembler_AST(char *input) {
   case STRING:
     substring_number++;
     if (strncmp(separated_strings.separated_strings[substring_number], "\"", 1) != 0) {
-      printf("%s\n", separated_strings.separated_strings[substring_number]);
       AST->AST_type = AST_error;
       strcpy(AST->error, INVALID_STRING_ERROR);
       return AST;
@@ -157,11 +156,10 @@ assembler_AST *create_assembler_AST(char *input) {
     checker = check_valid_end_of_line(substring_number,
                                       separated_strings.number_of_strings - 1);
     if (checker == YES) {
-      strncpy(
-          AST->AST_options.directive.AST_directive_options.string,
-          separated_strings.separated_strings[substring_number] + 1,
-          strlen(separated_strings.separated_strings[substring_number]) -
-              2);
+      for (i = 1; separated_strings.separated_strings[substring_number][i] != '\0'; i++) {
+        AST->AST_options.directive.AST_directive_options.string[i - 1] = separated_strings.separated_strings[substring_number][i];
+      }
+      AST->AST_options.directive.num_of_data_entries = i - 2;
       AST->AST_type = AST_directive;
       AST->AST_options.directive.AST_directive_type = AST_directive_string;
       return AST;
@@ -180,6 +178,7 @@ assembler_AST *create_assembler_AST(char *input) {
       delete_trie(keywords);
       return AST;
     }
+    substring_number++;
     checker = check_valid_end_of_line(substring_number,
                                       separated_strings.number_of_strings - 1);
     if (checker == NO) {
@@ -191,7 +190,9 @@ assembler_AST *create_assembler_AST(char *input) {
     AST->AST_type = AST_directive;
     AST->AST_options.directive.AST_directive_type = AST_directive_entry;
     strcpy(AST->AST_options.directive.AST_directive_options.label,
-           separated_strings.separated_strings[substring_number + 1]);
+           separated_strings.separated_strings[substring_number]);
+    strcpy(AST->label, separated_strings.separated_strings[substring_number]);
+    return AST;
     break;
   case EXTERN:
     checker = is_a_valid_label(
@@ -201,6 +202,7 @@ assembler_AST *create_assembler_AST(char *input) {
       strcpy(AST->error, INVALID_LABEL_ERROR);
       break;
     }
+    substring_number++;
     checker = check_valid_end_of_line(substring_number,
                                       separated_strings.number_of_strings - 1);
     if (checker == NO) {
@@ -211,7 +213,9 @@ assembler_AST *create_assembler_AST(char *input) {
     AST->AST_type = AST_directive;
     AST->AST_options.directive.AST_directive_type = AST_directive_extern;
     strcpy(AST->AST_options.directive.AST_directive_options.label,
-           separated_strings.separated_strings[substring_number + 1]);
+           separated_strings.separated_strings[substring_number]);
+    strcpy(AST->label, separated_strings.separated_strings[substring_number]);
+    return AST;
     break;
   case DEFINE:
     if (separated_strings.number_of_strings !=
