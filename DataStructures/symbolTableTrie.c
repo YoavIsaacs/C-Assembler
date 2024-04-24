@@ -73,3 +73,21 @@ void delete_symbol_table(symbol_entry_node *node) {
     free(node->symbol_data);
     free(node);
 }
+
+
+void print_symbol_table_names(symbol_entry_node* node) {
+    int i;
+    if (node == NULL) {
+        return;
+    }
+    
+    for (i = 0; i < POSSIBLE_CHARACTERS; i++) {
+        if (node->next[i] != NULL) {
+            if (node->next[i]->is_symbol == YES) {
+                printf("%s at address %d\n", node->next[i]->symbol_data->name, node->next[i]->symbol_data->address);
+            }
+            print_symbol_table_names(node->next[i]);
+        }
+    }
+    
+}

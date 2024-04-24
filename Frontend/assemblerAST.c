@@ -2,6 +2,7 @@
 #include "../global/definitions.h"
 #include <ctype.h>
 #include <limits.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -156,10 +157,11 @@ assembler_AST *create_assembler_AST(char *input) {
     checker = check_valid_end_of_line(substring_number,
                                       separated_strings.number_of_strings - 1);
     if (checker == YES) {
-      for (i = 1; separated_strings.separated_strings[substring_number][i] != '\0'; i++) {
+      for (i = 1; separated_strings.separated_strings[substring_number][i + 1] != '\0'; i++) {
         AST->AST_options.directive.AST_directive_options.string[i - 1] = separated_strings.separated_strings[substring_number][i];
       }
-      AST->AST_options.directive.num_of_data_entries = i - 2;
+      AST->AST_options.directive.AST_directive_options.string[i - 1] = '\0';
+      AST->AST_options.directive.num_of_data_entries = i;
       AST->AST_type = AST_directive;
       AST->AST_options.directive.AST_directive_type = AST_directive_string;
       return AST;
@@ -353,12 +355,11 @@ assembler_AST *create_assembler_AST(char *input) {
     return AST;
   }
 
-  if (strcmp(temp_string, "not") == 0 || strcmp(temp_string, "clr") == 0 ||
-      strcmp(temp_string, "inc") == 0 || strcmp(temp_string, "dec") == 0 ||
-      strcmp(temp_string, "jmp") == 0 || strcmp(temp_string, "bne") == 0 ||
-      strcmp(temp_string, "bne") == 0 || strcmp(temp_string, "red") == 0 ||
-      strcmp(temp_string, "prn") == 0 || strcmp(temp_string, "jsr") == 0) {
-
+  else if (strcmp(temp_string, "not") == 0 || strcmp(temp_string, "clr") == 0 ||
+           strcmp(temp_string, "inc") == 0 || strcmp(temp_string, "dec") == 0 ||
+           strcmp(temp_string, "jmp") == 0 || strcmp(temp_string, "bne") == 0 ||
+           strcmp(temp_string, "bne") == 0 || strcmp(temp_string, "red") == 0 ||
+           strcmp(temp_string, "prn") == 0 || strcmp(temp_string, "jsr") == 0) {
 
     AST->AST_options.instruction.AST_instruction_operand_type[1].AST_instruction_operand_option = not_relevant;
 
@@ -409,7 +410,7 @@ assembler_AST *create_assembler_AST(char *input) {
 
     checker =
         parse_operand(separated_strings.separated_strings[substring_number],
-                      opcode, operand_source, AST, keywords);
+                      opcode, operand_destination, AST, keywords);
     if (checker == INVALID_OPERAND) {
       AST->AST_type = AST_error;
       strcpy(AST->error, INVALID_OPERAND_ERROR);
@@ -419,18 +420,40 @@ assembler_AST *create_assembler_AST(char *input) {
       AST->AST_type = AST_error;
       strcpy(AST->error, INVALID_OPERAND_ERROR);
     }
-    AST->AST_options.instruction.AST_instruction_operand_type[operand_destination].AST_instruction_operand_option = AST_instruction_operand_option_label;
-    AST->AST_options.instruction.AST_instruction_operand_type[operand_source].AST_instruction_operand_option = not_relevant;
-    strcpy(AST->AST_options.instruction.AST_instruction_operand_type[operand_destination].AST_instruction_operand_type.label, separated_strings.separated_strings[substring_number]);
-    AST->AST_options.instruction.AST_instruction_operand_type[operand_destination].AST_instruction_operand_type.label[strlen(separated_strings.separated_strings[substring_number])] = '\0';
-      delete_trie(keywords);
+    switch (checker) {
+      case CONSTANT:
+        AST->AST_options.instruction.AST_instruction_operand_type[operand_source].AST_instruction_operand_option = not_relevant;
+        AST->AST_options.instruction.AST_instruction_operand_type[operand_destination].AST_instruction_operand_option = AST_instruction_operand_option_constant;
+        break;
+      case LABEL:
+        AST->AST_options.instruction
+            .AST_instruction_operand_type[operand_source]
+            .AST_instruction_operand_option = not_relevant;
+        AST->AST_options.instruction.AST_instruction_operand_type[operand_destination].AST_instruction_operand_option = AST_instruction_operand_option_label;
+        break;
+      case REGISTER:
+        AST->AST_options.instruction
+            .AST_instruction_operand_type[operand_source]
+            .AST_instruction_operand_option = not_relevant;
+        AST->AST_options.instruction
+            .AST_instruction_operand_type[operand_destination]
+            .AST_instruction_operand_option =
+            AST_instruction_operand_option_register;
+        break;
+      case INDEX:
+        AST->AST_options.instruction
+            .AST_instruction_operand_type[operand_source]
+            .AST_instruction_operand_option = not_relevant;
+        AST->AST_options.instruction
+            .AST_instruction_operand_type[operand_destination]
+            .AST_instruction_operand_option =
+            AST_instruction_operand_option_index;
+        break;
+    }
+    delete_trie(keywords);
     return AST;
-  }
-
-  /* NO OPERAND INSTRUCTIONS */
-
-  if (strcmp(temp_string, "rts") == 0 || strcmp(temp_string, "hlt") == 0) {
-
+  } else if (strcmp(temp_string, "rts") == 0 ||
+             strcmp(temp_string, "hlt") == 0) {
 
     AST->AST_options.instruction.AST_instruction_operand_type[0].AST_instruction_operand_option = not_relevant;
     AST->AST_options.instruction.AST_instruction_operand_type[1].AST_instruction_operand_option = not_relevant;
@@ -571,12 +594,10 @@ int parse_operand(char *input, int instruction, int source_destination,
         AST->AST_options.instruction
             .AST_instruction_operand_type[source_destination]
             .AST_instruction_operand_option =
-            AST_instruction_operand_option_label;
-        strcpy(AST->AST_options.instruction
-                   .AST_instruction_operand_type[source_destination]
-                   .AST_instruction_operand_type.label,
-               input);
-        return LABEL;
+            AST_instruction_operand_option_constant;
+        AST->AST_options.instruction.AST_instruction_operand_type[source_destination].AST_instruction_operand_type.constant.type = op_label;
+        strcpy(AST->AST_options.instruction.AST_instruction_operand_type[source_destination].AST_instruction_operand_type.constant.constant_type.constant_label, input);
+        return CONSTANT;
       case INVALID_LABEL:
         AST->AST_type = AST_error;
         strcpy(AST->error, INVALID_LABEL_ERROR);
@@ -587,13 +608,8 @@ int parse_operand(char *input, int instruction, int source_destination,
       check = is_a_valid_number(input, INT_MIN, INT_MAX, &operand);
       switch (check) {
       case VALID_NUMBER:
-        AST->AST_options.instruction
-            .AST_instruction_operand_type[source_destination]
-            .AST_instruction_operand_type.constant = operand;
-        AST->AST_options.instruction
-            .AST_instruction_operand_type[source_destination]
-            .AST_instruction_operand_option =
-            AST_instruction_operand_option_constant;
+          AST->AST_options.instruction.AST_instruction_operand_type[source_destination].AST_instruction_operand_type.constant.type = op_constant;
+          AST->AST_options.instruction.AST_instruction_operand_type[source_destination].AST_instruction_operand_type.constant.constant_type.constant_constant = operand;
         return CONSTANT;
       case INVALID_NUMBER:
         AST->AST_type = AST_error;

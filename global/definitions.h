@@ -28,6 +28,14 @@
 #define NUMBER_OF_VALID_OPERANDS_FOR_NO_OPERAND_INSTRUCTIONS 1
 #define HASH_TABLE_INITIAL_CAPACITY 256
 #define MAX_ENTRIES 3996
+#define NUM_OF_OPERANDS 2
+#define OB_FILE_EXTENTION_LENGTH 3
+#define OB_FILE_EXTENTION ".ob"
+#define EXT_FILE_EXTENTION_LENGTH 4
+#define EXT_FILE_EXTENTION ".ext"
+#define ENT_FILE_EXTENTION_LENGTH 4
+#define ENT_FILE_EXTENTION ".ent"
+
 
 /* SYNTAX ERRORS */
 
@@ -49,9 +57,22 @@
 #define INVALID_STRING_ERROR "Error, invalid string.\n"
 #define EXCESS_STRINGS_ERROR "Error, extra text after the end of the line.\n"
 #define INVALID_DEFINE_ERROR "Error, invalid number of operands for .define.\n"
-#define INVALID_INSTRUCTION_ERROR "Error, invalid number of operands for instruction.\n"
+#define INVALID_INSTRUCTION_ERROR "Error, invalid instruction.\n"
 #define INVALID_OPERAND_ERROR "Error, invalid operand.\n"
 #define HASH_TABLE_INPUT_ERROR "Error while inputting to hash table.\n"
+#define SYMBOL_NOT_FOUND_ERROR "Error: label %s is not defined\n"
+#define INVALID_DIRECTIVE_ERROR "Error, invalid directive.\n"
+
+
+/* OPERAND OFFSETS */
+#define OPCODE_OFFSET 6
+#define FIRST_OPERAND_OFFSET 4
+#define SECOND_OPERAND_OFFSET 2
+#define FIRST_REGISTER_OFFSET 5
+#define SECOND_REGISTER_OFFSET 2
+#define TWO_REGISTERS_OFFSET 4
+#define TWO_REGISTERS_OFFSET_VALUE 15
+
 
 /* ENUMS */
 enum BOOL {
@@ -250,7 +271,13 @@ typedef struct assembler_AST {
           not_relevant
         } AST_instruction_operand_option;
         union {
-          int constant;
+          struct constant {
+            enum {op_constant, op_label} type;
+            union {
+              int constant_constant;
+              char constant_label[MAX_LABEL_LENGTH];
+            } constant_type;
+          } constant;
           char label[MAX_LABEL_LENGTH];
           int register_number;
           struct {
@@ -352,14 +379,17 @@ typedef struct external_table {
 
 typedef struct translation_unit {
   int *code_image;
+  int code_image_size;
+  int code_lines_count;
   int IC;
   int *data_image;
+  int data_image_size;
   int DC;
   symbol_entry_node *symbol_table;
   int number_of_symbols;
-  external_table *external_table;
+  external_table external_table[MAX_ENTRIES];
   int number_of_externals;
-  symbol *entries[MAX_ENTRIES];
+  symbol entries[MAX_ENTRIES];
   int number_of_entries;
 } translation_unit;
 

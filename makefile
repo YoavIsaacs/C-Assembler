@@ -1,20 +1,20 @@
 CC			= gcc
 CFLAGS		= -ansi -pedantic -Wall
 LDFLAGS		= -lm
-PROG_NAME 	= preproc
+PROG_NAME 	= assembler
 BUILD_DIR	= build
 OBJ_DIR		= $(BUILD_DIR)/obj
 BIN_DIR		= $(BUILD_DIR)/bin
 ZIP_NAME	= Maman14.zip
 ifdef DEBUG
-CFLAGS += -g 
+CFLAGS += -g -fsanitize=address 
 endif
 
 .PHONY: clean build_env all
 
 all: build_env $(PROG_NAME) 
 
-$(PROG_NAME): test.o trie.o linkedList.o macro.o preprocessor.o assemblerAST.o firstPass.o symbolTableTrie.o
+$(PROG_NAME): test.o trie.o linkedList.o macro.o preprocessor.o assemblerAST.o firstPass.o symbolTableTrie.o secondPass.o code_output.o
 	$(CC) $(CFLAGS) $(OBJ_DIR)/*.o -o $(BIN_DIR)/$@ $(LDFLAGS)
 
 test.o: test.c Preprocessor/preprocessor.h \
@@ -60,6 +60,21 @@ firstPass.o: Middle/firstPass.c Middle/firstPass.h \
  Middle/../FrontEnd/../Preprocessor/../DataStructures/trie.h \
  Middle/../DataStructures/symbolTableTrie.h \
  Middle/../DataStructures/../global/definitions.h
+
+secondPass.o: Middle/secondPass.c Middle/secondPass.h \
+ Middle/../global/definitions.h \
+ Middle/../DataStructures/symbolTableTrie.h \
+ Middle/../DataStructures/../global/definitions.h \
+ Middle/../Frontend/assemblerAST.h \
+ Middle/../Frontend/../global/definitions.h \
+ Middle/../Frontend/../Preprocessor/preprocessor.h \
+ Middle/../Frontend/../Preprocessor/../DataStructures/macro.h \
+ Middle/../Frontend/../Preprocessor/../DataStructures/../global/definitions.h \
+ Middle/../Frontend/../Preprocessor/../DataStructures/linkedList.h \
+ Middle/../Frontend/../Preprocessor/../DataStructures/trie.h
+
+code_output.o: Backend/code_output.c Backend/../global/definitions.h \
+ Backend/code_output.h
 
 %.o:
 	$(CC) $(CFLAGS) -c $< -o $(OBJ_DIR)/$@
